@@ -5,7 +5,6 @@ This module uses pydantic settings to load configuration from environment variab
 All sensitive values should be set via .env file or environment variables.
 """
 
-import os
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

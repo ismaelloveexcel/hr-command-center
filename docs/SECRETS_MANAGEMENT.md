@@ -138,7 +138,7 @@ If using Azure DevOps for CI/CD:
 ### Backend not loading .env file
 - Ensure `.env` file is in the `backend/` directory (same level as `main.py`)
 - Check file permissions
-- Verify `python-dotenv` is installed: `pip install python-dotenv`
+- Verify `pydantic-settings` is installed: `pip install pydantic-settings`
 
 ### Frontend not using environment variables
 - Ensure variable names start with `REACT_APP_`
