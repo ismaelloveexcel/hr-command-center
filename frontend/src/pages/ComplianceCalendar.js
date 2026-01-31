@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './ComplianceCalendar.css';
+import { config } from '../config';
 
 function ComplianceCalendar() {
   const [events, setEvents] = useState([]);
@@ -18,8 +19,8 @@ function ComplianceCalendar() {
 
     try {
       const [eventsRes, summaryRes] = await Promise.all([
-        fetch(`http://localhost:8000/compliance/events?days_ahead=${daysAhead}`),
-        fetch(`http://localhost:8000/compliance/summary?days_ahead=${daysAhead}`)
+        fetch(`${config.apiUrl}/compliance/events?days_ahead=${daysAhead}`),
+        fetch(`${config.apiUrl}/compliance/summary?days_ahead=${daysAhead}`)
       ]);
 
       if (!eventsRes.ok || !summaryRes.ok) {

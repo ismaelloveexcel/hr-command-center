@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './TrackRequest.css';
+import { config } from '../config';
 
 function TrackRequest() {
   const [reference, setReference] = useState('');
@@ -14,7 +15,7 @@ function TrackRequest() {
     setTracking(null);
 
     try {
-      const response = await fetch(`http://localhost:8000/requests/track/${reference}`);
+      const response = await fetch(`${config.apiUrl}/requests/track/${reference}`);
       
       if (!response.ok) {
         throw new Error('Request not found. Please check your reference number.');

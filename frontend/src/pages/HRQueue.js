@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './HRQueue.css';
+import { config } from '../config';
 
 function HRQueue() {
   const [requests, setRequests] = useState([]);
@@ -26,8 +27,8 @@ function HRQueue() {
 
     try {
       const url = filter === 'all' 
-        ? 'http://localhost:8000/hr/requests'
-        : `http://localhost:8000/hr/requests?status=${filter}`;
+        ? `${config.apiUrl}/hr/requests`
+        : `${config.apiUrl}/hr/requests?status=${filter}`;
       
       const response = await fetch(url);
       
@@ -46,7 +47,7 @@ function HRQueue() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('http://localhost:8000/hr/requests/stats');
+      const response = await fetch(`${config.apiUrl}/hr/requests/stats`);
       const data = await response.json();
       setStats(data);
     } catch (err) {
@@ -59,7 +60,7 @@ function HRQueue() {
 
     try {
       const response = await fetch(
-        `http://localhost:8000/requests/${selectedRequest.reference}`,
+        `${config.apiUrl}/requests/${selectedRequest.reference}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
