@@ -2,19 +2,13 @@
 Database configuration and session management.
 """
 
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
+from app.config import settings
 
-load_dotenv()
-
-# Database URL - defaults to SQLite for development, PostgreSQL-ready
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite:///./hr_portal.db"
-)
+# Database URL from settings
+DATABASE_URL = settings.database_url
 
 # Create engine
 engine = create_engine(
