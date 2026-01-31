@@ -1,8 +1,6 @@
 fastapi==0.109.1
 uvicorn[standard]==0.24.0
 # Pre-pinned for upcoming database and validation phases
-sqlalchemy==2.0.23
-pydantic==2.5.3
 # Database and migrations
 alembic==1.13.1
 psycopg2-binary==2.9.9
