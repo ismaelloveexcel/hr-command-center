@@ -22,9 +22,16 @@ wheels/
 .installed.cfg
 *.egg
 
+# Database
+*.db
+*.db-journal
+
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Environment
+.env

@@ -1,11 +1,13 @@
 """
 Request Model (SQLAlchemy).
 
-Placeholder for database model representing a request entity.
-No database connection or actual implementation at this stage.
+Database model for request management.
 """
 
 from enum import Enum
+from datetime import datetime
+from sqlalchemy import Column, Integer, String, Text, DateTime, Enum as SQLEnum
+from app.database import Base
 
 
 class RequestStatus(Enum):
@@ -21,26 +23,39 @@ class RequestStatus(Enum):
     REJECTED = "rejected"
 
 
-class Request:
+class Request(Base):
     """
-    Placeholder for Request database model.
+    Request database model.
     
-    This is a structure placeholder only - no SQLAlchemy Base,
-    no table definition, no database connection.
-    
-    Expected attributes (COMMENTED ONLY - not implemented):
-    - id: Primary key (integer, auto-increment)
-    - reference: Unique request reference (e.g., REF-2026-001)
-    - title: Request title (string, required)
-    - description: Request description (text, optional)
-    - status: Current status (RequestStatus enum, default: SUBMITTED)
-    - submitted_by: Employee identifier (string, required)
-    - submitted_at: Submission timestamp (datetime, auto-set)
-    - reviewed_by: HR staff identifier (string, optional)
-    - reviewed_at: Review timestamp (datetime, optional)
-    - public_notes: Notes visible to employee (text, optional)
-    - internal_notes: HR-only notes (text, optional)
-    - created_at: Record creation timestamp (datetime, auto-set)
-    - updated_at: Record update timestamp (datetime, auto-update)
+    Represents an employee request in the HR system.
     """
-    pass
+    __tablename__ = "requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(20), unique=True, index=True, nullable=False)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(
+        SQLEnum(RequestStatus, values_callable=lambda obj: [e.value for e in obj]),
+        default=RequestStatus.SUBMITTED,
+        nullable=False
+    )
+    
+    # Employee information
+    submitted_by = Column(String(100), nullable=False)
+    submitted_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # HR review information
+    reviewed_by = Column(String(100), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    
+    # Notes
+    public_notes = Column(Text, nullable=True)  # Visible to employee
+    internal_notes = Column(Text, nullable=True)  # HR-only
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    def __repr__(self):
+        return f"<Request {self.reference}: {self.title}>"
