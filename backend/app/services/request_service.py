@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.request import Request, RequestStatus
 from app.schemas.request import RequestCreate, RequestUpdate
+from app.services.notification_service import get_notification_service
 
 
 def generate_reference(db: Session) -> str:
@@ -62,6 +63,15 @@ def create_request(db: Session, request_data: RequestCreate) -> Request:
     db.commit()
     db.refresh(db_request)
     
+    # Trigger notification (stub - just logs)
+    notification_service = get_notification_service(db)
+    notification_service.notify_request_created(
+        request_id=db_request.id,
+        request_reference=db_request.reference,
+        submitted_by=db_request.submitted_by,
+        title=db_request.title
+    )
+    
     return db_request
 
 
@@ -90,6 +100,8 @@ def update_request_status(
     if not db_request:
         raise ValueError(f"Request {reference} not found")
     
+    old_status = db_request.status.value if db_request.status else None
+    
     # Update fields
     if update_data.status:
         # Validate status
@@ -117,6 +129,18 @@ def update_request_status(
     
     db.commit()
     db.refresh(db_request)
+    
+    # Trigger notification if status changed (stub - just logs)
+    if update_data.status and old_status != update_data.status:
+        notification_service = get_notification_service(db)
+        notification_service.notify_status_updated(
+            request_id=db_request.id,
+            request_reference=db_request.reference,
+            submitted_by=db_request.submitted_by,
+            old_status=old_status,
+            new_status=update_data.status,
+            public_notes=update_data.public_notes
+        )
     
     return db_request
 

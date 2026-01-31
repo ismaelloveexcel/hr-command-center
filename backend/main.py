@@ -3,7 +3,7 @@ from app.database import engine, Base
 from app.routers import requests, hr, compliance
 
 # Import models to ensure they're registered with Base
-from app.models import request, compliance as compliance_model
+from app.models import request, compliance as compliance_model, notification
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
