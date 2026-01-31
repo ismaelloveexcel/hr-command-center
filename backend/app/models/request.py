@@ -5,9 +5,6 @@ Placeholder for database model representing a request entity.
 No database connection or actual implementation at this stage.
 """
 
-from typing import Optional
-from datetime import datetime
-
 
 class Request:
     """

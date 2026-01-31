@@ -1,6 +1,6 @@
 """
 Database Models.
 
-This module contains SQLAlchemy model definitions.
+This module defines placeholders and utilities for future SQLAlchemy model definitions.
 Note: No database connection is established at this stage.
 """

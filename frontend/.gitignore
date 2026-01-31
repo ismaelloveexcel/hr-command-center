@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# Commit package-lock.json for reproducible builds
 yarn.lock
 
 # Production

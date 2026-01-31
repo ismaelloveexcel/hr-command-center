@@ -1,5 +1,5 @@
 """
-Pydantic Schemas.
+Schema placeholders.
 
-This module contains Pydantic models for request/response validation.
+This module currently defines plain Python placeholder classes for request/response data and validation.
 """

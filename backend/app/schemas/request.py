@@ -1,15 +1,12 @@
 """
-Request Schemas (Pydantic).
+Request schema placeholders (plain Python classes).
 
-Placeholder schemas for request validation and serialization.
-No validation rules defined at this stage.
+Placeholder schemas for future request validation and serialization.
+No validation rules or Pydantic models defined at this stage.
 """
 
 # NOTE: These are shape placeholders only.
-# Do not add fields or validation until Phase 6 (Validation Layer).
-
-from typing import Optional
-from datetime import datetime
+# Do not add fields or validation until Phase 2 (Validation Layer).
 
 
 class RequestBase:
