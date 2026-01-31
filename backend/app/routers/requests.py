@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
-from app.services import request_service
+from app.schemas.tracking import RequestTrackingResponse
+from app.services import request_service, tracking_service
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -58,4 +59,32 @@ def update_request(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update request: {str(e)}"
+        )
+
+
+@router.get("/track/{reference}", response_model=RequestTrackingResponse)
+def track_request(
+    reference: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Track a request by reference (public access, no login required).
+    
+    Returns sanitized information suitable for employee viewing.
+    Internal HR notes are NOT included in the response.
+    
+    Example: GET /requests/track/REF-2026-001
+    """
+    try:
+        tracking_info = tracking_service.get_request_tracking(db, reference)
+        return tracking_info
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve tracking information: {str(e)}"
         )
