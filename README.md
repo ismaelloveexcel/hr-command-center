@@ -60,13 +60,25 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
-The project includes automated Azure deployment:
+The project includes automated Azure deployment with comprehensive documentation:
+
+### 📚 Deployment Documentation
+
+| Document | Purpose | When to Use |
+|----------|---------|-------------|
+| [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | **Start here** - Current status & next steps | Always start here |
+| [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
+| [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | During deployment |
+| [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Initial setup |
+| [Azure Deployment](./docs/AZURE_DEPLOYMENT.md) | Architecture & design | Understanding system |
 
 ### Quick Start
+
 1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
-2. **Create resources** - See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
+2. **Create resources** - Follow [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
 3. **Configure secrets** - Add 4 secrets to GitHub repository
 4. **Push to main** - Automatic deployment triggers
+5. **Verify** - Use [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md)
 
 ### GitHub Secrets Required
 
@@ -77,7 +89,7 @@ The project includes automated Azure deployment:
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Token from Static Web App |
 | `REACT_APP_API_URL` | Backend URL (https://...) |
 
-See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) for step-by-step instructions.
+**📋 See [Deployment Status](./docs/DEPLOYMENT_STATUS.md) for current deployment readiness.**
 
 ## Environment Variables
 
