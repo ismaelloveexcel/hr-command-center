@@ -4,14 +4,13 @@ Request API endpoints.
 Unified request system for the UAE HR Portal.
 """
 
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
 from app.schemas.tracking import RequestTrackingResponse
-from app.schemas.hr import HRRequestResponse
-from app.services import request_service, tracking_service, hr_service
+from app.services import request_service, tracking_service
+from app.dependencies.security import require_hr_api_key
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -35,23 +34,6 @@ def create_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create request: {str(e)}"
         )
-
-
-@router.get("", response_model=List[HRRequestResponse])
-def get_all_requests(
-    status: str = Query(None, description="Filter by status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db)
-):
-    """
-    Get all requests (HR dashboard list).
-    
-    Returns all requests with full details including internal notes.
-    No authentication at this stage.
-    """
-    requests = hr_service.get_hr_queue(db, status=status, limit=limit, offset=offset)
-    return requests
 
 
 @router.get("/{reference}", response_model=RequestTrackingResponse)
@@ -80,7 +62,11 @@ def track_request(
         )
 
 
-@router.patch("/{reference}/status", response_model=RequestResponse)
+@router.patch(
+    "/{reference}/status",
+    response_model=RequestResponse,
+    dependencies=[Depends(require_hr_api_key)]
+)
 def update_request_status(
     reference: str,
     update_data: RequestUpdate,

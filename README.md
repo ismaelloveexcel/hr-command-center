@@ -19,6 +19,7 @@ hr-command-center/
 - **Status Lifecycle**: Submitted → Reviewing → Approved → Completed / Rejected
 - **Public Request Tracking**: No login required to track requests
 - **HR Dashboard**: Manage and update request statuses
+	- Requires HR API key for access to administrative endpoints
 - **Notification Stub**: Logs notifications (ready for future integration)
 
 ## Quick Start
@@ -52,10 +53,10 @@ Frontend: http://localhost:3000
 |--------|----------|-------------|
 | GET | `/health` | Health check |
 | POST | `/requests` | Submit new request |
-| GET | `/requests` | List all requests (HR) |
 | GET | `/requests/{ref}` | Track request (public) |
-| PATCH | `/requests/{ref}/status` | Update status (HR) |
-| GET | `/hr/stats` | Request statistics |
+| PATCH | `/requests/{ref}/status` | Update status (requires HR API key) |
+| GET | `/hr/requests` | HR request queue (requires HR API key) |
+| GET | `/hr/stats` | Request statistics (requires HR API key) |
 
 ## Deployment
 
@@ -84,12 +85,19 @@ See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) for step-by-step instructio
 ```
 DATABASE_URL=sqlite:///./hr_portal.db
 CORS_ORIGINS=http://localhost:3000
+HR_API_KEY=generate-a-strong-secret-value
 ```
 
 ### Frontend (.env)
 ```
 REACT_APP_API_URL=http://localhost:8000
 ```
+
+### HR Dashboard Access
+
+- Share the `HR_API_KEY` with authorised HR staff only.
+- The React HR dashboard prompts for the key at runtime and never stores it in source control.
+- Losing or rotating the key requires updating the backend environment variable and notifying HR users.
 
 ## Documentation
 

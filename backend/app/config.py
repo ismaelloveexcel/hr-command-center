@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     app_name: str = "UAE HR Portal API"
     debug: bool = False
     cors_origins: str = "http://localhost:3000"
+    hr_api_key: Optional[str] = None
     
     # Secret key for JWT or other security features
     secret_key: Optional[str] = None

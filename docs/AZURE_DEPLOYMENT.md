@@ -53,8 +53,9 @@ This guide explains how to deploy the UAE HR Portal to Azure.
 6. **Configuration** → **General settings**:
    - Startup Command: `bash startup.sh`
 7. **Configuration** → **Application settings**, add:
-   - `DATABASE_URL`: `sqlite:///./hr_portal.db`
-   - `CORS_ORIGINS`: Your frontend URL
+  - `DATABASE_URL`: `sqlite:///./hr_portal.db`
+  - `CORS_ORIGINS`: Your frontend URL
+  - `HR_API_KEY`: Generate a long random string (store securely and share only with HR staff)
 
 #### Frontend - Static Web Apps
 
