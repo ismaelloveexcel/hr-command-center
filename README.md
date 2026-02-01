@@ -96,6 +96,7 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 |----------|---------|-------------|
 | [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md) | **Non-technical users** - Deploy with GitHub UI | Easiest method ⭐ |
 | [Azure Complete Deployment](./docs/AZURE_COMPLETE_DEPLOYMENT.md) | **Complete workflow docs** - Technical details | Understanding workflow |
+| [Azure Resource Cleanup](./docs/AZURE_RESOURCE_CLEANUP.md) | **Clean up redundant resources** - Cost savings | Remove old deployments 🧹 |
 | [Workflow Review](./docs/WORKFLOW_REVIEW.md) | **Improvements & analysis** - What's new | Technical review |
 | [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **CLI automation** - Setup script | Command-line deployment |
 | [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
