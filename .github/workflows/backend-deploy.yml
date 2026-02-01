@@ -8,6 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
+  AZURE_WEBAPP_NAME: baynunah-hr-api
 
 jobs:
   deploy:
@@ -37,29 +38,28 @@ jobs:
       - name: Create deployment package
         run: |
           cd backend
-          zip -r ../backend.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db"
+          zip -r ../deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db" -x "tests/*"
           cd ..
-          ls -la backend.zip
+          ls -la deploy.zip
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: ${{ secrets.AZURE_BACKEND_APP_NAME }}
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-          package: backend.zip
-          type: zip
+          package: deploy.zip
 
       - name: Health check
         run: |
           echo "Waiting for deployment to stabilize..."
           sleep 45
-          for i in 1 2 3; do
-            if curl -sf "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.azurewebsites.net/health"; then
+          for i in 1 2 3 4 5; do
+            if curl -sf "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"; then
               echo ""
               echo "✓ Health check passed"
               exit 0
             fi
-            echo "Attempt $i failed, retrying in 15s..."
+            echo "Attempt $i: waiting..."
             sleep 15
           done
           echo "Health check pending - app may still be starting"
