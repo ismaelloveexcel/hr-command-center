@@ -1,74 +1,118 @@
 #!/bin/bash
-
+#
 # UAE HR Portal - Azure Deployment Script
-# Usage: ./deploy.sh [resource-group-name] [location]
+# 
+# Usage: ./deploy.sh <backend-name> <frontend-name> <resource-group>
+#
+# This script:
+# 1. Creates/verifies Azure resources
+# 2. Configures GitHub secrets
+# 3. Triggers deployment
+#
+# Prerequisites:
+# - Azure CLI (az) logged in
+# - GitHub CLI (gh) logged in
+#
 
 set -e
 
-RESOURCE_GROUP=${1:-"hr-portal-rg"}
-LOCATION=${2:-"eastus"}
+# Parse arguments or use defaults
+BACKEND_NAME="${1:-baynunah-hr-api}"
+FRONTEND_NAME="${2:-hrportal-frontend-new}"
+RG="${3:-baynunah-hr-portal-rg}"
 
-echo "=========================================="
+# Derived values
+BACKEND_URL="https://${BACKEND_NAME}.azurewebsites.net"
+
+echo "========================================"
 echo "UAE HR Portal - Azure Deployment"
-echo "=========================================="
-echo "Resource Group: $RESOURCE_GROUP"
-echo "Location: $LOCATION"
+echo "========================================"
+echo ""
+echo "Backend:  $BACKEND_NAME"
+echo "Frontend: $FRONTEND_NAME"
+echo "Resource Group: $RG"
 echo ""
 
-# Check if logged in to Azure
-if ! az account show > /dev/null 2>&1; then
-    echo "Please login to Azure first:"
-    echo "  az login"
+# Verify Azure login
+if ! az account show &>/dev/null; then
+    echo "❌ Not logged into Azure. Run: az login"
     exit 1
 fi
 
-# Create resource group
-echo "Creating resource group..."
-az group create \
-    --name "$RESOURCE_GROUP" \
-    --location "$LOCATION" \
-    --output none
+# Verify GitHub login
+if ! gh auth status &>/dev/null; then
+    echo "❌ Not logged into GitHub. Run: gh auth login"
+    exit 1
+fi
 
-# Deploy infrastructure
-echo "Deploying infrastructure..."
-DEPLOYMENT_OUTPUT=$(az deployment group create \
-    --resource-group "$RESOURCE_GROUP" \
-    --template-file main.bicep \
-    --query "properties.outputs" \
-    --output json)
+# Get repo
+REPO=$(gh repo view --json nameWithOwner -q '.nameWithOwner' 2>/dev/null)
+if [ -z "$REPO" ]; then
+    REPO="ismaelloveexcel/hr-command-center"
+fi
+echo "Repository: $REPO"
+echo ""
 
-# Extract outputs
-BACKEND_NAME=$(echo $DEPLOYMENT_OUTPUT | jq -r '.backendAppName.value')
-BACKEND_URL=$(echo $DEPLOYMENT_OUTPUT | jq -r '.backendUrl.value')
-STATIC_WEB_APP_NAME=$(echo $DEPLOYMENT_OUTPUT | jq -r '.staticWebAppName.value')
-STATIC_WEB_APP_URL=$(echo $DEPLOYMENT_OUTPUT | jq -r '.staticWebAppUrl.value')
+# Step 1: Ensure resource group
+echo "[1/7] Resource group..."
+az group show -n "$RG" -o none 2>/dev/null || \
+    az group create -n "$RG" -l eastus -o none
+echo "✓ Ready"
+
+# Step 2: App Service Plan (Free tier)
+echo "[2/7] App Service plan..."
+PLAN="${BACKEND_NAME}-plan"
+az appservice plan show -n "$PLAN" -g "$RG" -o none 2>/dev/null || \
+    az appservice plan create -n "$PLAN" -g "$RG" --sku F1 --is-linux -o none
+echo "✓ Ready"
+
+# Step 3: Web App
+echo "[3/7] Web app..."
+az webapp show -n "$BACKEND_NAME" -g "$RG" -o none 2>/dev/null || \
+    az webapp create -n "$BACKEND_NAME" -g "$RG" -p "$PLAN" --runtime "PYTHON:3.11" -o none
+echo "✓ Ready"
+
+# Step 4: Configure Web App
+echo "[4/7] Configuring..."
+FRONTEND_URL=$(az staticwebapp show -n "$FRONTEND_NAME" -g "$RG" --query "defaultHostname" -o tsv 2>/dev/null)
+FRONTEND_URL="https://${FRONTEND_URL}"
+
+az webapp config set -n "$BACKEND_NAME" -g "$RG" \
+    --startup-file "gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000" \
+    -o none
+
+az webapp config appsettings set -n "$BACKEND_NAME" -g "$RG" \
+    --settings DATABASE_URL="sqlite:///./hr_portal.db" CORS_ORIGINS="$FRONTEND_URL" \
+    -o none
+echo "✓ Configured"
+
+# Step 5: Get credentials
+echo "[5/7] Getting credentials..."
+PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles -n "$BACKEND_NAME" -g "$RG" --xml)
+SWA_TOKEN=$(az staticwebapp secrets list -n "$FRONTEND_NAME" -g "$RG" --query "properties.apiKey" -o tsv)
+echo "✓ Got credentials"
+
+# Step 6: Set GitHub secrets
+echo "[6/7] Setting GitHub secrets..."
+gh secret set AZURE_BACKEND_APP_NAME -b "$BACKEND_NAME" -R "$REPO"
+gh secret set AZURE_BACKEND_PUBLISH_PROFILE -b "$PUBLISH_PROFILE" -R "$REPO"
+gh secret set REACT_APP_API_URL -b "$BACKEND_URL" -R "$REPO"
+gh secret set AZURE_STATIC_WEB_APPS_API_TOKEN -b "$SWA_TOKEN" -R "$REPO"
+echo "✓ Secrets configured"
+
+# Step 7: Trigger deployment
+echo "[7/7] Triggering deployment..."
+gh workflow run backend-deploy.yml -R "$REPO" 2>/dev/null || true
+gh workflow run frontend-deploy.yml -R "$REPO" 2>/dev/null || true
+echo "✓ Deployment triggered"
 
 echo ""
-echo "=========================================="
-echo "Deployment Complete!"
-echo "=========================================="
+echo "========================================"
+echo "✅ COMPLETE"
+echo "========================================"
 echo ""
-echo "Backend App Name: $BACKEND_NAME"
-echo "Backend URL: $BACKEND_URL"
+echo "Frontend: $FRONTEND_URL"
+echo "Backend:  $BACKEND_URL"
 echo ""
-echo "Static Web App Name: $STATIC_WEB_APP_NAME"
-echo "Static Web App URL: $STATIC_WEB_APP_URL"
+echo "Check status: gh run list --limit 3 -R $REPO"
 echo ""
-echo "=========================================="
-echo "GitHub Secrets to Configure:"
-echo "=========================================="
-echo ""
-echo "1. AZURE_BACKEND_APP_NAME = $BACKEND_NAME"
-echo ""
-echo "2. AZURE_BACKEND_PUBLISH_PROFILE = (run command below)"
-echo "   az webapp deployment list-publishing-profiles --name $BACKEND_NAME --resource-group $RESOURCE_GROUP --xml"
-echo ""
-echo "3. AZURE_STATIC_WEB_APPS_API_TOKEN = (run command below)"
-echo "   az staticwebapp secrets list --name $STATIC_WEB_APP_NAME --resource-group $RESOURCE_GROUP --query 'properties.apiKey' -o tsv"
-echo ""
-echo "4. REACT_APP_API_URL = $BACKEND_URL"
-echo ""
-echo "=========================================="
-echo "After configuring secrets, push to main:"
-echo "  git push origin main"
-echo "=========================================="

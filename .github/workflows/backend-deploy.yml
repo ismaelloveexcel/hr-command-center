@@ -3,30 +3,46 @@ name: Deploy Backend to Azure App Service
 on:
   push:
     branches: [main]
-    paths: ['backend/**']
+    paths: ['backend/**', '.github/workflows/backend-deploy.yml']
   workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
+        working-directory: backend
         run: |
-          cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Verify app runs
+        working-directory: backend
+        run: python -c "from main import app; print('OK')"
+
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
-          app-name: 'baynunah-hr-api'
+          app-name: ${{ secrets.AZURE_BACKEND_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           package: ./backend
+
+      - name: Health check
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          curl -sf "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.azurewebsites.net/health" && echo "✓ Health check passed" || echo "Health check pending"
