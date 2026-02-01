@@ -29,13 +29,13 @@ az webapp deployment list-publishing-profiles \
   --xml > /tmp/publish-profile.xml
 
 # 5. Update GitHub secret with new publish profile
-gh secret set AZURE_BACKEND_PUBLISH_PROFILE < /tmp/publish-profile.xml
+gh secret set AZURE_BACKEND_PUBLISH_PROFILE --repo ismaelloveexcel/hr-command-center < /tmp/publish-profile.xml
 
 # 6. Update app name secret
-echo "$BACKEND_NAME" | gh secret set AZURE_BACKEND_APP_NAME
+echo "$BACKEND_NAME" | gh secret set AZURE_BACKEND_APP_NAME --repo ismaelloveexcel/hr-command-center
 
 # 7. Get backend URL and update frontend secret
-echo "https://${BACKEND_NAME}.azurewebsites.net" | gh secret set REACT_APP_API_URL
+echo "https://${BACKEND_NAME}.azurewebsites.net" | gh secret set REACT_APP_API_URL --repo ismaelloveexcel/hr-command-center
 
 # 8. Clean up sensitive file
 rm /tmp/publish-profile.xml
