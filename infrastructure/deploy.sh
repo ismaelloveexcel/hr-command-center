@@ -55,7 +55,11 @@ az webapp config set -n "$BACKEND_NAME" -g "$RG" \
     -o none
 
 az webapp config appsettings set -n "$BACKEND_NAME" -g "$RG" \
-    --settings DATABASE_URL="sqlite:///./hr_portal.db" CORS_ORIGINS="$FRONTEND_URL" \
+    --settings \
+    DATABASE_URL="sqlite:///./hr_portal.db" \
+    CORS_ORIGINS="$FRONTEND_URL" \
+    DEBUG="false" \
+    TRUSTED_HOSTS="${BACKEND_NAME}.azurewebsites.net" \
     -o none
 echo "✓ Configured"
 

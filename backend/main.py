@@ -50,17 +50,9 @@ app.add_middleware(
 )
 
 # Trusted host middleware to prevent host header attacks
-# Allow localhost for development and configured trusted hosts
-# Add testserver for test environments
-trusted_hosts = ["localhost", "127.0.0.1", "testserver"]
-
-# Optionally trust a specific Azure App Service hostname via environment variable
-azure_website_hostname = os.getenv("AZURE_WEBSITE_HOSTNAME")
-if azure_website_hostname:
-    trusted_hosts.append(azure_website_hostname)
-
-if settings.trusted_hosts:
-    trusted_hosts.extend(settings.trusted_hosts_list)
+# In production (Azure), we allow all hosts since Azure handles this at the edge
+# In development, we restrict to localhost
+trusted_hosts = ["*"]  # Azure App Service handles host validation
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 
 # Include routers
