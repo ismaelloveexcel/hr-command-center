@@ -59,9 +59,24 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
-The project includes GitHub Actions workflows for Azure deployment:
-- `backend-deploy.yml` - Deploys FastAPI to Azure App Service
-- `frontend-deploy.yml` - Deploys React to Azure Static Web Apps
+The project includes automated Azure deployment:
+
+### Quick Start
+1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
+2. **Create resources** - See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
+3. **Configure secrets** - Add 4 secrets to GitHub repository
+4. **Push to main** - Automatic deployment triggers
+
+### GitHub Secrets Required
+
+| Secret | Description |
+|--------|-------------|
+| `AZURE_BACKEND_APP_NAME` | Your App Service name |
+| `AZURE_BACKEND_PUBLISH_PROFILE` | XML from App Service deployment center |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | Token from Static Web App |
+| `REACT_APP_API_URL` | Backend URL (https://...) |
+
+See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) for step-by-step instructions.
 
 ## Environment Variables
 
