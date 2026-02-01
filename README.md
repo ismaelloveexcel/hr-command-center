@@ -66,9 +66,20 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
-The project includes automated Azure deployment with comprehensive documentation:
+The project includes multiple Azure deployment options with comprehensive documentation:
 
-### 🤖 Automated Setup (Recommended)
+### 🚀 GitHub Actions Workflow (⭐ Recommended for Non-Technical Users)
+
+**One-click deployment directly from GitHub:**
+
+1. Go to **Actions** tab → **Complete Azure Setup & Deploy**
+2. Click **Run workflow** → Use default values
+3. Wait 10 minutes → Get your live URLs!
+
+**No CLI installation needed!** Everything runs in GitHub Actions.  
+**Details**: [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md)
+
+### 🤖 Command-Line Automation (For Technical Users)
 
 **One command to deploy everything:**
 
@@ -83,31 +94,47 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Fastest method ⭐ |
+| [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md) | **Non-technical users** - Deploy with GitHub UI | Easiest method ⭐ |
+| [Azure Complete Deployment](./docs/AZURE_COMPLETE_DEPLOYMENT.md) | **Complete workflow docs** - Technical details | Understanding workflow |
+| [Azure Resource Cleanup](./docs/AZURE_RESOURCE_CLEANUP.md) | **Clean up redundant resources** - Cost savings | Remove old deployments 🧹 |
+| [Workflow Review](./docs/WORKFLOW_REVIEW.md) | **Improvements & analysis** - What's new | Technical review |
+| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **CLI automation** - Setup script | Command-line deployment |
 | [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
 | [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
 | [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Manual setup |
-| [Azure Deployment](./docs/AZURE_DEPLOYMENT.md) | Architecture & design | Understanding system |
 
 ### Quick Start
 
-**Option A: Automated (⭐ Recommended)**
+**Option A: GitHub Actions Workflow (⭐ Easiest - No Installation Required)**
+1. **Configure secrets** - Add 3 OIDC secrets (one-time setup)
+2. **Run workflow** - Actions → Complete Azure Setup & Deploy → Run workflow
+3. **Get URLs** - Check workflow summary for your live app URLs
+
+**Option B: Command-Line Automation (For Technical Users)**
 ```bash
 brew install azure-cli gh    # Install CLIs
 az login && gh auth login    # Login
 cd infrastructure && ./setup-azure.sh  # Deploy!
 ```
 
-**Option B: Manual**
+**Option C: Manual Deployment**
 1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
 2. **Create resources** - Follow [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
-3. **Configure secrets** - Add 4 secrets to GitHub repository
+3. **Configure secrets** - Add secrets to GitHub repository
 4. **Push to main** - Automatic deployment triggers
 5. **Verify** - Use [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md)
 
 ### GitHub Secrets Required
 
+#### For Complete Azure Setup & Deploy Workflow (OIDC)
+| Secret | Description |
+|--------|-------------|
+| `AZURE_CLIENT_ID` | Azure Service Principal Client ID |
+| `AZURE_TENANT_ID` | Azure Tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure Subscription ID |
+
+#### For Standard Deployment Workflows (Legacy)
 | Secret | Description |
 |--------|-------------|
 | `AZURE_BACKEND_APP_NAME` | Your App Service name |
@@ -115,7 +142,7 @@ cd infrastructure && ./setup-azure.sh  # Deploy!
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Token from Static Web App |
 | `REACT_APP_API_URL` | Backend URL (https://...) |
 
-**📋 See [Deployment Status](./docs/DEPLOYMENT_STATUS.md) for current deployment readiness.**
+**📋 See [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md) to get started in minutes!**
 
 ## Environment Variables
 
