@@ -54,7 +54,6 @@ env:
 jobs:
   validate-and-setup:
     runs-on: ubuntu-latest
-    environment: production
     permissions:
       id-token: write
       contents: read
@@ -116,8 +115,14 @@ jobs:
             KEYVAULT_NAME="${{ github.event.inputs.keyvault_name }}"
           fi
           
-          # Ensure Key Vault name meets requirements (3-24 chars, alphanumeric and hyphens)
+          # Ensure Key Vault name meets requirements (3-24 chars, alphanumeric and hyphens, start with a letter)
           KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g' | cut -c1-24)
+          # Azure Key Vault names must start with a letter; prefix with 'kv' if they do not
+          if ! [[ "$KEYVAULT_NAME" =~ ^[a-z] ]]; then
+            KEYVAULT_NAME="kv${KEYVAULT_NAME}"
+            # Re-enforce max length after prefixing
+            KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
+          fi
           
           echo "resource_group=${{ github.event.inputs.resource_group }}" >> $GITHUB_OUTPUT
           echo "keyvault_name=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
@@ -216,6 +221,8 @@ jobs:
           echo "::group::Create Bicep Parameters"
           
           # Create parameters file for Bicep deployment
+          # Note: frontendUrl is intentionally empty at this stage since the Static Web App
+          # doesn't exist yet. CORS will be configured in a subsequent step after deployment.
           cat > /tmp/deploy-params.json << EOF
           {
             "\$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
@@ -229,6 +236,9 @@ jobs:
               },
               "appServiceSku": {
                 "value": "${{ github.event.inputs.app_service_sku }}"
+              },
+              "frontendUrl": {
+                "value": ""
               }
             }
           }
@@ -312,7 +322,6 @@ jobs:
     needs: validate-and-setup
     if: ${{ !inputs.skip_backend_deploy }}
     runs-on: ubuntu-latest
-    environment: production
     permissions:
       id-token: write
       contents: read
@@ -388,14 +397,15 @@ jobs:
             sleep 15
           done
           
+          echo "::error::Backend health check failed after 10 attempts"
           echo "⚠️ Backend may still be starting up. Check manually at: ${BACKEND_URL}/health"
           echo "::endgroup::"
+          exit 1
 
   deploy-frontend:
     needs: [validate-and-setup, deploy-backend]
     if: ${{ !inputs.skip_frontend_deploy && (success() || inputs.skip_backend_deploy) }}
     runs-on: ubuntu-latest
-    environment: production
     permissions:
       id-token: write
       contents: read
@@ -446,7 +456,7 @@ jobs:
         working-directory: frontend
         env:
           REACT_APP_API_URL: ${{ needs.validate-and-setup.outputs.backend_url }}
-          CI: false
+          CI: true
         run: |
           echo "::group::Build React App"
           echo "📝 Backend API URL: ${{ needs.validate-and-setup.outputs.backend_url }}"
@@ -482,8 +492,10 @@ jobs:
             sleep 15
           done
           
+          echo "::error::Frontend health check failed after 8 attempts"
           echo "⚠️ Frontend may still be deploying. Check manually at: ${FRONTEND_URL}"
           echo "::endgroup::"
+          exit 1
 
   verify-deployment:
     needs: [validate-and-setup, deploy-backend, deploy-frontend]
