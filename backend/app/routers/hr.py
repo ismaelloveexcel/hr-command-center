@@ -11,6 +11,7 @@ from app.database import get_db
 from app.schemas.hr import HRRequestResponse
 from app.services import hr_service
 from app.dependencies.security import require_hr_api_key
+from app.core.rate_limit import apply_rate_limit
 
 router = APIRouter(prefix="/hr", tags=["hr"])
 
@@ -32,19 +33,8 @@ def get_hr_queue(
     
     Rate limited to 100 requests per minute for authenticated users.
     """
-    # Apply rate limiting using shared limiter from app state
-    limiter = http_request.app.state.limiter
-    if limiter.enabled:
-        # Check rate limit manually for this request
-        limiter._check_request_limit(
-            http_request,
-            "hr.get_hr_queue",
-            ["100/minute"],
-            None,
-            None,
-            limiter._key_func,
-            None
-        )
+    # Apply rate limiting
+    apply_rate_limit(http_request, "hr.get_hr_queue", "100/minute")
     
     requests = hr_service.get_hr_queue(db, status=status, limit=limit, offset=offset)
     return requests
@@ -58,19 +48,8 @@ def get_request_stats(http_request: Request, db: Session = Depends(get_db)):
     Rate limited to 60 requests per minute.
     Returns count of requests in each status for dashboard display.
     """
-    # Apply rate limiting using shared limiter from app state
-    limiter = http_request.app.state.limiter
-    if limiter.enabled:
-        # Check rate limit manually for this request
-        limiter._check_request_limit(
-            http_request,
-            "hr.get_request_stats",
-            ["60/minute"],
-            None,
-            None,
-            limiter._key_func,
-            None
-        )
+    # Apply rate limiting
+    apply_rate_limit(http_request, "hr.get_request_stats", "60/minute")
     
     counts = hr_service.get_request_count_by_status(db)
     return {

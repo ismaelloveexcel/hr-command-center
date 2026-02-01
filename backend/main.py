@@ -95,7 +95,8 @@ async def validate_configuration():
         )
     
     # Warn if CORS origins include wildcards with credentials
-    if settings.cors_origins == "*" or (isinstance(settings.cors_origins, str) and "*" in settings.cors_origins.split(",")):
+    # settings.cors_origins is always a string (from environment variable)
+    if settings.cors_origins == "*" or "*" in [origin.strip() for origin in settings.cors_origins.split(",")]:
         logger.error(
             "❌ CORS wildcard (*) is not allowed with credentials! "
             "Configure specific origins in CORS_ORIGINS environment variable."

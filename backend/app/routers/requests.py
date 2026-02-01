@@ -11,6 +11,7 @@ from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
 from app.schemas.tracking import RequestTrackingResponse
 from app.services import request_service, tracking_service
 from app.dependencies.security import require_hr_api_key
+from app.core.rate_limit import apply_rate_limit
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -28,19 +29,8 @@ def create_request(
     The system automatically generates a unique reference (REF-YYYY-NNN)
     and sets status to 'submitted'.
     """
-    # Apply rate limiting using shared limiter from app state
-    limiter = http_request.app.state.limiter
-    if limiter.enabled:
-        # Check rate limit manually for this request
-        limiter._check_request_limit(
-            http_request,
-            "requests.create_request",
-            ["10/hour"],
-            None,
-            None,
-            limiter._key_func,
-            None
-        )
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.create_request", "10/hour")
     
     try:
         db_request = request_service.create_request(db, request_data)
@@ -65,19 +55,8 @@ def track_request(
     Returns sanitized information suitable for employee viewing.
     Internal HR notes are NOT included in the response.
     """
-    # Apply rate limiting using shared limiter from app state
-    limiter = http_request.app.state.limiter
-    if limiter.enabled:
-        # Check rate limit manually for this request
-        limiter._check_request_limit(
-            http_request,
-            "requests.track_request",
-            ["30/minute"],
-            None,
-            None,
-            limiter._key_func,
-            None
-        )
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.track_request", "30/minute")
     
     try:
         tracking_info = tracking_service.get_request_tracking(db, reference)
@@ -112,19 +91,8 @@ def update_request_status(
     Valid status values: submitted, reviewing, approved, completed, rejected
     Requires HR API key authentication.
     """
-    # Apply rate limiting using shared limiter from app state
-    limiter = http_request.app.state.limiter
-    if limiter.enabled:
-        # Check rate limit manually for this request
-        limiter._check_request_limit(
-            http_request,
-            "requests.update_request_status",
-            ["100/minute"],
-            None,
-            None,
-            limiter._key_func,
-            None
-        )
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.update_request_status", "100/minute")
     
     try:
         db_request = request_service.update_request_status(db, reference, update_data)
