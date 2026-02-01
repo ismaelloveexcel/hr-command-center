@@ -2,6 +2,8 @@
 
 A unified request management system for UAE-based HR operations.
 
+> **⚠️ Deployment Issue**: If you're experiencing deployment failures, see [DEPLOYMENT_FAILURES_ANALYSIS.md](./DEPLOYMENT_FAILURES_ANALYSIS.md) for troubleshooting.
+
 ## Project Structure
 
 ```
@@ -66,6 +68,8 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
+> **🔐 Prerequisites**: Before running any deployment workflows, you must configure Azure OIDC secrets in GitHub repository settings. See [DEPLOYMENT_FAILURES_ANALYSIS.md](./DEPLOYMENT_FAILURES_ANALYSIS.md) for setup instructions.
+
 The project includes autonomous Azure deployment with self-healing capabilities:
 
 ### ⚡ Autonomous Backend Deployment (New!)
@@ -78,7 +82,12 @@ The project includes autonomous Azure deployment with self-healing capabilities:
 
 **Quick start:**
 ```bash
-# 1. Configure OIDC secrets (see docs)
+# 1. Configure OIDC secrets (REQUIRED - see DEPLOYMENT_FAILURES_ANALYSIS.md)
+#    Add these to GitHub repository secrets:
+#    - AZURE_CLIENT_ID
+#    - AZURE_TENANT_ID
+#    - AZURE_SUBSCRIPTION_ID
+
 # 2. Run bootstrap workflow
 gh workflow run backend-bootstrap.yml
 
