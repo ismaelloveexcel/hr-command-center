@@ -61,11 +61,12 @@ def test_input_sanitization_html_stripped(client):
     assert response.status_code in [201, 429]
     if response.status_code == 201:
         data = response.json()
-        # HTML should be stripped
+        # HTML tags should be stripped (but safe text content remains)
         assert "<script>" not in data["title"]
+        assert "</script>" not in data["title"]
         assert "<b>" not in data.get("description", "")
         assert "<img" not in data["submitted_by"]
-        assert "alert" not in data["title"].lower()
+        assert "onerror" not in data["submitted_by"]  # XSS attempt removed
 
 
 def test_status_validation(client, hr_api_key):

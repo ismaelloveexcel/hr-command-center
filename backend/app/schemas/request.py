@@ -19,7 +19,10 @@ class RequestBase(BaseModel):
     @classmethod
     def sanitize_title(cls, v: str) -> str:
         """Sanitize title to prevent XSS attacks."""
-        return sanitize_text(v, max_length=200) or ""
+        sanitized = sanitize_text(v, max_length=200)
+        if not sanitized or not sanitized.strip():
+            raise ValueError("Title cannot be empty after sanitization")
+        return sanitized
     
     @field_validator('description')
     @classmethod
@@ -42,7 +45,10 @@ class RequestCreate(RequestBase):
     @classmethod
     def sanitize_submitted_by(cls, v: str) -> str:
         """Sanitize submitted_by field."""
-        return sanitize_text(v, max_length=100) or ""
+        sanitized = sanitize_text(v, max_length=100)
+        if not sanitized or not sanitized.strip():
+            raise ValueError("submitted_by cannot be empty after sanitization")
+        return sanitized
 
 
 class RequestUpdate(BaseModel):
