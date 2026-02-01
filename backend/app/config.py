@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     debug: bool = False
     cors_origins: str = "http://localhost:3000"
     hr_api_key: Optional[str] = None
+    trusted_hosts: Optional[str] = None  # Comma-separated list of trusted hosts
     
     # Secret key for JWT or other security features
     secret_key: Optional[str] = None
@@ -56,6 +57,13 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Convert CORS origins string to list."""
         return [origin.strip() for origin in self.cors_origins.split(",")]
+    
+    @property
+    def trusted_hosts_list(self) -> list[str]:
+        """Convert trusted hosts string to list."""
+        if not self.trusted_hosts:
+            return []
+        return [host.strip() for host in self.trusted_hosts.split(",")]
 
 
 # Global settings instance
