@@ -165,7 +165,7 @@ open https://YOUR-FRONTEND.azurestaticapps.net
 ### For Understanding
 1. **Architecture**: [AZURE_DEPLOYMENT.md](./AZURE_DEPLOYMENT.md)
 2. **Backend**: [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md)
-3. **Security**: [../backend/app/docs/SECURITY.md](../backend/docs/SECURITY.md) (from PR #9)
+3. **Security**: [../backend/docs/SECURITY.md](../backend/docs/SECURITY.md) (from PR #9)
 
 ### For Maintenance
 1. **Workflows**: [WORKFLOW_CONSOLIDATION.md](./WORKFLOW_CONSOLIDATION.md)

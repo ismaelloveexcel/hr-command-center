@@ -299,17 +299,15 @@ curl https://YOUR-BACKEND.azurewebsites.net/health
 open https://YOUR-FRONTEND.azurestaticapps.net
 ```
 
-## Deployment Workflow Consolidation Needed
+## Deployment Workflow Consolidation
 
-**⚠️ Action Required**: Two Static Web Apps workflows exist:
+**✅ Completed in This PR**: Workflow consolidation has been completed.
 
-1. `frontend-deploy.yml` - Custom workflow using `AZURE_STATIC_WEB_APPS_API_TOKEN`
-2. `azure-static-web-apps-proud-coast-0ab079210.yml` - Auto-generated using `AZURE_STATIC_WEB_APPS_API_TOKEN_PROUD_COAST_0AB079210`
+- ✅ Kept `frontend-deploy.yml` (more control, consistent naming)
+- ✅ Removed duplicate auto-generated workflow `azure-static-web-apps-proud-coast-0ab079210.yml`
+- ✅ Consolidated to single token name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
 
-**Recommendation**: 
-- Keep `frontend-deploy.yml` (more control, consistent naming)
-- Archive or remove auto-generated workflow
-- Consolidate to single token name: `AZURE_STATIC_WEB_APPS_API_TOKEN`
+See [WORKFLOW_CONSOLIDATION.md](./WORKFLOW_CONSOLIDATION.md) for details on the consolidation process.
 
 ## Next Steps
 
@@ -317,7 +315,7 @@ open https://YOUR-FRONTEND.azurestaticapps.net
 2. ⚠️ Verify GitHub secrets are configured
 3. ⚠️ Confirm Azure resources are created
 4. ⚠️ Merge PR #9 (security hardening)
-5. ⚠️ Consolidate Static Web Apps workflows
+5. ✅ Consolidate Static Web Apps workflows (completed in this PR)
 6. ⚠️ Deploy and verify
 7. ✅ Monitor and maintain
 
@@ -325,7 +323,7 @@ open https://YOUR-FRONTEND.azurestaticapps.net
 
 - [Azure Setup Guide](./AZURE_SETUP_GUIDE.md) - Step-by-step Azure configuration
 - [Azure Deployment Guide](./AZURE_DEPLOYMENT.md) - Deployment architecture and details
-- [Security Guide](./SECURITY.md) - Security considerations for production (from PR #9)
+- [Security Guide](../backend/docs/SECURITY.md) - Security considerations for production (from PR #9)
 - [Backend Architecture](./BACKEND_ARCHITECTURE.md) - Backend design and structure
 
 ---
