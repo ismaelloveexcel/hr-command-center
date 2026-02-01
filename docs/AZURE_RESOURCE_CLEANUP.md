@@ -11,7 +11,7 @@ Based on your Azure Portal screenshots, you have multiple resources that appear 
 **Resource Groups:**
 - `HR-PORTAL`
 - `baynunah-hr-portal-rg`
-- Multiple others
+- Multiple resource groups with similar names
 
 **App Services:**
 - `uae-hr-portal-api`
@@ -22,9 +22,6 @@ Based on your Azure Portal screenshots, you have multiple resources that appear 
 
 **Static Web Apps:**
 - `hrportal-frontend-new`
-
-**Resource Groups:**
-- Multiple resource groups with similar names
 
 ## 🎯 Why This Happens
 

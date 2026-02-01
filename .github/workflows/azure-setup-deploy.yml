@@ -120,7 +120,7 @@ jobs:
           # Azure Key Vault names must start with a letter; prefix with 'kv' if they do not
           if ! [[ "$KEYVAULT_NAME" =~ ^[a-z] ]]; then
             KEYVAULT_NAME="kv${KEYVAULT_NAME}"
-            # Re-enforce max length after prefixing
+            # Enforce max length after prefixing
             KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
           fi
           
