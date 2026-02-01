@@ -4,28 +4,34 @@ Request API endpoints.
 Unified request system for the UAE HR Portal.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
 from app.schemas.tracking import RequestTrackingResponse
 from app.services import request_service, tracking_service
 from app.dependencies.security import require_hr_api_key
+from app.core.rate_limit import apply_rate_limit
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
 
 @router.post("", response_model=RequestResponse, status_code=status.HTTP_201_CREATED)
 def create_request(
+    http_request: Request,
     request_data: RequestCreate,
     db: Session = Depends(get_db)
 ):
     """
     Create a new request (employee submit).
     
+    Rate limited to 10 requests per hour per IP to prevent spam.
     The system automatically generates a unique reference (REF-YYYY-NNN)
     and sets status to 'submitted'.
     """
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.create_request", "10/hour")
+    
     try:
         db_request = request_service.create_request(db, request_data)
         return db_request
@@ -38,15 +44,20 @@ def create_request(
 
 @router.get("/{reference}", response_model=RequestTrackingResponse)
 def track_request(
+    http_request: Request,
     reference: str,
     db: Session = Depends(get_db)
 ):
     """
     Track a request by reference (public access, no login required).
     
+    Rate limited to 30 requests per minute per IP.
     Returns sanitized information suitable for employee viewing.
     Internal HR notes are NOT included in the response.
     """
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.track_request", "30/minute")
+    
     try:
         tracking_info = tracking_service.get_request_tracking(db, reference)
         return tracking_info
@@ -68,6 +79,7 @@ def track_request(
     dependencies=[Depends(require_hr_api_key)]
 )
 def update_request_status(
+    http_request: Request,
     reference: str,
     update_data: RequestUpdate,
     db: Session = Depends(get_db)
@@ -75,9 +87,13 @@ def update_request_status(
     """
     Update request status (HR updates).
     
+    Rate limited to 100 requests per minute (authenticated endpoint).
     Valid status values: submitted, reviewing, approved, completed, rejected
-    No authentication at this stage.
+    Requires HR API key authentication.
     """
+    # Apply rate limiting
+    apply_rate_limit(http_request, "requests.update_request_status", "100/minute")
+    
     try:
         db_request = request_service.update_request_status(db, reference, update_data)
         return db_request
