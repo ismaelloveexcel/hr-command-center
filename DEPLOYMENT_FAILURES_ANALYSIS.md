@@ -60,7 +60,7 @@ Follow these steps to configure OIDC authentication for GitHub Actions:
      --name "GitHub-Actions-HR-Portal" \
      --role contributor \
      --scopes /subscriptions/{subscription-id}/resourceGroups/baynunah-hr-portal-rg \
-     --sdk-auth
+     --json-auth
    ```
 
 2. **Create a Federated Credential** for the Service Principal:

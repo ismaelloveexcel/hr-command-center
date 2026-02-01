@@ -85,15 +85,6 @@ jobs:
           
           echo "✅ All required files exist"
 
-      - name: Validate required GitHub secrets exist
-        run: |
-          echo "🔍 Validating GitHub secrets..."
-          
-          # The previous step already validated AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID
-          # This step is kept for backward compatibility but could be removed
-          
-          echo "✅ All required secrets configured"
-
       - name: Azure OIDC Login
         uses: azure/login@v1
         with:
