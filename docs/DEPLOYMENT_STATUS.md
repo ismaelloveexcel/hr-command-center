@@ -30,6 +30,21 @@ Created comprehensive deployment documentation:
 
 ## ⚠️ Action Required
 
+### 🤖 Quick Setup (Automated)
+
+**Use the automated setup script for fastest deployment:**
+
+```bash
+cd infrastructure
+./setup-azure.sh
+```
+
+This automates steps 2-4 below. See [DEPLOYMENT_AUTOMATION.md](./DEPLOYMENT_AUTOMATION.md) for details.
+
+---
+
+### Manual Steps
+
 ### 1. Merge Security PR
 **PR #9** is ready to merge but currently in draft status.
 

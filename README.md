@@ -62,18 +62,38 @@ Frontend: http://localhost:3000
 
 The project includes automated Azure deployment with comprehensive documentation:
 
+### 🤖 Automated Setup (Recommended)
+
+**One command to deploy everything:**
+
+```bash
+cd infrastructure && ./setup-azure.sh
+```
+
+Creates Azure resources, configures secrets, and triggers deployment automatically.  
+**Time**: 5-10 minutes | **Details**: [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md)
+
 ### 📚 Deployment Documentation
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | **Start here** - Current status & next steps | Always start here |
+| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Fastest method ⭐ |
+| [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
-| [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | During deployment |
-| [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Initial setup |
+| [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
+| [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Manual setup |
 | [Azure Deployment](./docs/AZURE_DEPLOYMENT.md) | Architecture & design | Understanding system |
 
 ### Quick Start
 
+**Option A: Automated (⭐ Recommended)**
+```bash
+brew install azure-cli gh    # Install CLIs
+az login && gh auth login    # Login
+cd infrastructure && ./setup-azure.sh  # Deploy!
+```
+
+**Option B: Manual**
 1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
 2. **Create resources** - Follow [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
 3. **Configure secrets** - Add 4 secrets to GitHub repository

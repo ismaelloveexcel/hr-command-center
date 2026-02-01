@@ -2,6 +2,25 @@
 
 > **Start Here**: This guide provides the fastest path to deploying your UAE HR Portal to Azure.
 
+## 🤖 Automated Setup (Recommended - 5 minutes)
+
+**The repository includes a fully automated setup script!**
+
+```bash
+cd infrastructure
+./setup-azure.sh
+```
+
+This script automatically:
+- ✅ Creates all Azure resources
+- ✅ Configures GitHub secrets
+- ✅ Triggers deployment
+- ✅ **95% automation** - just run one command!
+
+**See [Deployment Automation Guide](./docs/DEPLOYMENT_AUTOMATION.md) for details.**
+
+---
+
 ## 📋 What Was Done (PR #10)
 
 This PR provides comprehensive deployment assistance:
@@ -11,7 +30,33 @@ This PR provides comprehensive deployment assistance:
 ✅ **Created Documentation** - Complete deployment guide suite  
 ✅ **Updated README** - Added clear documentation navigation  
 
-## 🎯 Next Steps (5 Minutes)
+## 🎯 Next Steps
+
+### Option A: Automated Setup (Recommended ⭐)
+
+```bash
+# Prerequisites (one-time install)
+brew install azure-cli gh  # Or use your package manager
+az login                    # Login to Azure
+gh auth login               # Login to GitHub
+
+# Run automated setup
+cd infrastructure
+./setup-azure.sh
+
+# Done! Everything is configured automatically.
+```
+
+**What it automates**:
+- ✅ Azure resource creation (App Service, Static Web App)
+- ✅ GitHub secrets configuration (all 4 secrets)
+- ✅ Deployment trigger
+
+**Time**: 5-10 minutes | **Automation**: 95% | **Details**: [DEPLOYMENT_AUTOMATION.md](./docs/DEPLOYMENT_AUTOMATION.md)
+
+---
+
+### Option B: Manual Setup (If automation fails)
 
 ### Step 1: Verify GitHub Secrets ⚠️
 
