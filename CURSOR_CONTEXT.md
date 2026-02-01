@@ -10,7 +10,7 @@ This project is an employee-friendly HR portal for a UAE-based company.
 - UAE compliance awareness
 
 ## Constraints
-- One request system only
+- One unified request system only
 - One HR dashboard
 - No pass systems
 - No extra dashboards

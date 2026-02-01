@@ -1,5 +1,5 @@
 # REPO RULES (Do Not Modify)
-These rules enforce simplicity, control and HR-first design.
+These rules enforce simplicity, control, and HR-first design.
 
 ## Build Principles
 - Every feature must reduce HR workload or compliance risk.
@@ -10,8 +10,8 @@ These rules enforce simplicity, control and HR-first design.
 - One HR dashboard only.
 - No pass systems.
 - No extra dashboards.
-- No analytics dashboards or charts.
-- No additional modules not explicitly defined.
+- No analytics dashboards or charts, except where explicitly defined in the roadmap (e.g., planned Analytics & Reporting phases).
+- No additional modules beyond those explicitly defined in this document.
 
 ## Code Constraints
 - No file > 400 lines.
