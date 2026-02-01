@@ -15,7 +15,7 @@ function TrackRequest() {
     setTracking(null);
 
     try {
-      const response = await fetch(`${config.apiUrl}/requests/track/${reference}`);
+      const response = await fetch(`${config.apiUrl}/requests/${reference}`);
       
       if (!response.ok) {
         throw new Error('Request not found. Please check your reference number.');
