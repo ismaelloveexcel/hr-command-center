@@ -41,45 +41,92 @@ function TrackRequest() {
     });
   };
 
+  const getStatusIcon = (status) => {
+    const icons = {
+      submitted: '●',
+      reviewing: '◐',
+      approved: '✓',
+      completed: '✓✓',
+      rejected: '✕'
+    };
+    return icons[status] || '●';
+  };
+
   return (
     <main className="track-request">
-      <h1>Track My Request</h1>
-      <p className="subtitle">Enter your request reference number to check its status</p>
+      <div className="track-header">
+        <h1>Track My Request</h1>
+        <p className="subtitle">Enter your reference number to check the status of your request</p>
+      </div>
 
       <form onSubmit={handleTrack} className="track-form">
-        <div className="input-group">
+        <div className="input-wrapper">
           <input
             type="text"
+            id="reference"
             value={reference}
             onChange={(e) => setReference(e.target.value.toUpperCase())}
-            placeholder="Enter reference (e.g., REF-2026-001)"
+            placeholder=" "
             className="reference-input"
             required
           />
-          <button type="submit" disabled={loading} className="track-button">
-            {loading ? 'Tracking...' : 'Track Request'}
-          </button>
+          <label htmlFor="reference" className="floating-label">Reference Number</label>
+          <span className="input-hint">e.g., REF-2026-001</span>
         </div>
+        <button type="submit" disabled={loading} className="track-button">
+          {loading ? (
+            <span className="button-loading">
+              <span className="spinner"></span>
+              Tracking...
+            </span>
+          ) : (
+            'Track Request'
+          )}
+        </button>
       </form>
 
       {error && (
         <div className="error-message">
+          <span className="error-icon">!</span>
           <p>{error}</p>
+        </div>
+      )}
+
+      {loading && !tracking && (
+        <div className="loading-skeleton">
+          <div className="skeleton-card">
+            <div className="skeleton skeleton-line medium"></div>
+            <div className="skeleton skeleton-line short"></div>
+          </div>
+          <div className="skeleton-card">
+            <div className="skeleton skeleton-line long"></div>
+            <div className="skeleton skeleton-line medium"></div>
+            <div className="skeleton skeleton-line short"></div>
+          </div>
         </div>
       )}
 
       {tracking && (
         <div className="tracking-result">
           <div className="request-header">
-            <h2>{tracking.title}</h2>
-            <div className="reference-badge">{tracking.reference}</div>
+            <div>
+              <h2>{tracking.title}</h2>
+              <div className="reference-badge">{tracking.reference}</div>
+            </div>
           </div>
 
           <div className={`status-card status-${tracking.current_status}`}>
-            <div className="status-label">{tracking.status_label}</div>
-            {tracking.next_steps && (
-              <div className="next-steps">{tracking.next_steps}</div>
-            )}
+            <div className="status-content">
+              <span className={`status-icon-large ${tracking.current_status}`}>
+                {getStatusIcon(tracking.current_status)}
+              </span>
+              <div>
+                <div className="status-label">{tracking.status_label}</div>
+                {tracking.next_steps && (
+                  <div className="next-steps">{tracking.next_steps}</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {tracking.description && (
@@ -93,8 +140,13 @@ function TrackRequest() {
             <h3>Request Timeline</h3>
             <div className="timeline">
               {tracking.timeline.map((event, index) => (
-                <div key={index} className="timeline-event">
-                  <div className="timeline-dot"></div>
+                <div 
+                  key={index} 
+                  className={`timeline-event ${index === tracking.timeline.length - 1 ? 'latest' : ''}`}
+                >
+                  <div className={`timeline-dot ${event.status}`}>
+                    <span>{getStatusIcon(event.status)}</span>
+                  </div>
                   <div className="timeline-content">
                     <div className="timeline-date">{formatDate(event.timestamp)}</div>
                     <div className="timeline-description">{event.description}</div>
@@ -108,8 +160,14 @@ function TrackRequest() {
           </div>
 
           <div className="meta-info">
-            <p><strong>Submitted by:</strong> {tracking.submitted_by}</p>
-            <p><strong>Last updated:</strong> {formatDate(tracking.last_updated)}</p>
+            <div className="meta-item">
+              <span className="meta-label">Submitted by</span>
+              <span className="meta-value">{tracking.submitted_by}</span>
+            </div>
+            <div className="meta-item">
+              <span className="meta-label">Last updated</span>
+              <span className="meta-value">{formatDate(tracking.last_updated)}</span>
+            </div>
           </div>
         </div>
       )}

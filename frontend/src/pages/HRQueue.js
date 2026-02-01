@@ -49,7 +49,6 @@ function HRQueue() {
         throw new Error('Failed to update status');
       }
 
-      // Refresh the list
       await fetchRequests();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -69,72 +68,120 @@ function HRQueue() {
     });
   };
 
+  const getStatusIcon = (status) => {
+    const icons = {
+      submitted: '●',
+      reviewing: '◐',
+      approved: '✓',
+      completed: '✓✓',
+      rejected: '✕'
+    };
+    return icons[status] || '●';
+  };
+
+  const renderSkeletons = () => (
+    <div className="skeleton-container">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="skeleton-card">
+          <div className="skeleton-header">
+            <div className="skeleton skeleton-line medium"></div>
+            <div className="skeleton skeleton-badge"></div>
+          </div>
+          <div className="skeleton skeleton-line long"></div>
+          <div className="skeleton skeleton-line short"></div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderEmptyState = () => (
+    <div className="empty-state">
+      <div className="empty-state-icon">📋</div>
+      <h3>No Requests Yet</h3>
+      <p>When employees submit requests, they will appear here for review.</p>
+    </div>
+  );
+
   return (
     <main className="hr-queue">
-      <h1>HR Dashboard</h1>
-      <p className="subtitle">Manage employee requests</p>
+      <div className="page-header">
+        <h1>HR Dashboard</h1>
+        <p className="subtitle">Manage and update employee request statuses</p>
+      </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message">
+          <span className="error-icon">!</span>
+          <p>{error}</p>
+          <button onClick={fetchRequests} className="retry-btn">Retry</button>
+        </div>
+      )}
 
       {loading ? (
-        <div className="loading">Loading requests...</div>
+        renderSkeletons()
+      ) : requests.length === 0 ? (
+        renderEmptyState()
       ) : (
         <div className="requests-list">
-          {requests.length === 0 ? (
-            <div className="no-requests">No requests found</div>
-          ) : (
-            requests.map((request) => (
-              <div key={request.id} className="request-card">
-                <div className="request-header">
-                  <div>
-                    <h3>{request.title}</h3>
-                    <div className="request-meta">
-                      <span className="reference">{request.reference}</span>
-                      <span className="separator">-</span>
-                      <span>{formatDate(request.submitted_at)}</span>
-                    </div>
-                  </div>
-                  <div className="status-control">
-                    <select
-                      value={request.status}
-                      onChange={(e) => handleStatusChange(request.reference, e.target.value)}
-                      disabled={updatingRef === request.reference}
-                      className={`status-select status-${request.status}`}
-                    >
-                      <option value="submitted">Submitted</option>
-                      <option value="reviewing">Reviewing</option>
-                      <option value="approved">Approved</option>
-                      <option value="completed">Completed</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                    {updatingRef === request.reference && (
-                      <span className="updating">Updating...</span>
-                    )}
+          {requests.map((request) => (
+            <div key={request.id} className={`request-card status-${request.status}`}>
+              <div className="card-accent"></div>
+              <div className="request-header">
+                <div className="request-title-section">
+                  <h3>{request.title}</h3>
+                  <div className="request-meta">
+                    <span className="reference">{request.reference}</span>
+                    <span className="separator">•</span>
+                    <span className="date">{formatDate(request.submitted_at)}</span>
                   </div>
                 </div>
-
-                {request.description && (
-                  <p className="request-description">{request.description}</p>
-                )}
-
-                <div className="request-info">
-                  <div className="info-row">
-                    <strong>Submitted by:</strong> {request.submitted_by}
+                <div className="status-control">
+                  <div className={`status-indicator ${request.status}`}>
+                    <span className="status-dot">{getStatusIcon(request.status)}</span>
                   </div>
-                  {request.reviewed_by && (
-                    <div className="info-row">
-                      <strong>Reviewed by:</strong> {request.reviewed_by}
-                    </div>
-                  )}
-                  {request.internal_notes && (
-                    <div className="info-row internal">
-                      <strong>Internal Notes:</strong> {request.internal_notes}
-                    </div>
+                  <select
+                    value={request.status}
+                    onChange={(e) => handleStatusChange(request.reference, e.target.value)}
+                    disabled={updatingRef === request.reference}
+                    className={`status-select ${request.status}`}
+                  >
+                    <option value="submitted">Submitted</option>
+                    <option value="reviewing">Reviewing</option>
+                    <option value="approved">Approved</option>
+                    <option value="completed">Completed</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  {updatingRef === request.reference && (
+                    <span className="updating-spinner"></span>
                   )}
                 </div>
               </div>
-            ))
-          )}
+
+              {request.description && (
+                <p className="request-description">{request.description}</p>
+              )}
+
+              <div className="request-details">
+                <div className="detail-item">
+                  <span className="detail-label">Submitted by</span>
+                  <span className="detail-value">{request.submitted_by}</span>
+                </div>
+                {request.reviewed_by && (
+                  <div className="detail-item">
+                    <span className="detail-label">Reviewed by</span>
+                    <span className="detail-value">{request.reviewed_by}</span>
+                  </div>
+                )}
+              </div>
+
+              {request.internal_notes && (
+                <div className="internal-notes">
+                  <span className="notes-label">Internal Notes</span>
+                  <p>{request.internal_notes}</p>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </main>
