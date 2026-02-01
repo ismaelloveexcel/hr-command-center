@@ -55,7 +55,7 @@ jobs:
         if: steps.detect.outputs.app == 'REPAIR_CREATE' && (github.event.inputs.repair_mode == true || github.event_name == 'schedule')
         id: recreate
         run: |
-          set -e
+          set -euo pipefail
           APP_NAME="${{ env.BACKEND_APP_NAME }}"
           RG="${{ env.RESOURCE_GROUP }}"
           PLAN="${{ env.APP_SERVICE_PLAN }}"
@@ -87,7 +87,7 @@ jobs:
       - name: Apply backend repair settings
         id: config
         run: |
-          set -e
+          set -euo pipefail
           APP="${{ steps.detect.outputs.app }}"
           CREATED="${{ steps.recreate.outputs.created }}"
           if [ "$APP" = "REPAIR_CREATE" ]; then
@@ -123,7 +123,7 @@ jobs:
         if: steps.config.outputs.created == 'true'
         id: profile
         run: |
-          set -e
+          set -euo pipefail
           APP="${{ steps.config.outputs.app }}"
           RG="${{ env.RESOURCE_GROUP }}"
           
@@ -132,6 +132,7 @@ jobs:
             --name "$APP" --resource-group "$RG" \
             --xml > profile.xml
           
+          # Base64 encode for safe transport (Linux-specific -w 0 flag)
           PROFILE_B64=$(base64 -w 0 profile.xml)
           echo "profile=$PROFILE_B64" >> $GITHUB_OUTPUT
 
@@ -141,7 +142,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -e
+          set -euo pipefail
           PROFILE_B64="${{ steps.profile.outputs.profile }}"
           PROFILE_XML="$(echo "$PROFILE_B64" | base64 -d)"
           
