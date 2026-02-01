@@ -21,6 +21,12 @@ hr-command-center/
 - **HR Dashboard**: Manage and update request statuses
 	- Requires HR API key for access to administrative endpoints
 - **Notification Stub**: Logs notifications (ready for future integration)
+- **Security Features**:
+	- Rate limiting to prevent abuse (10 requests/hour for submissions)
+	- Security headers (XSS, clickjacking protection)
+	- Input sanitization to prevent XSS attacks
+	- CORS configuration for specific origins
+	- API key authentication for HR endpoints
 
 ## Quick Start
 
@@ -86,7 +92,16 @@ See [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) for step-by-step instructio
 DATABASE_URL=sqlite:///./hr_portal.db
 CORS_ORIGINS=http://localhost:3000
 HR_API_KEY=generate-a-strong-secret-value
+DEBUG=true
 ```
+
+**Production Configuration:**
+- Use PostgreSQL: `DATABASE_URL=postgresql://user:pass@host/db?sslmode=require`
+- Set specific CORS origins: `CORS_ORIGINS=https://myapp.azurewebsites.net`
+- Generate strong HR_API_KEY: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
+- Set `DEBUG=false`
+
+See [SECURITY.md](./docs/SECURITY.md) for complete security configuration guide.
 
 ### Frontend (.env)
 ```
@@ -101,4 +116,30 @@ REACT_APP_API_URL=http://localhost:8000
 
 ## Documentation
 
-See the [docs](./docs) folder for detailed documentation.
+See the [docs](./docs) folder for detailed documentation:
+- [Security Configuration Guide](./docs/SECURITY.md) - Security features and production setup
+- [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) - Deployment to Azure
+- [Backend Architecture](./docs/BACKEND_ARCHITECTURE.md) - Technical architecture details
+
+## Security Considerations
+
+⚠️ **Before Production Deployment:**
+1. Set `DEBUG=false`
+2. Configure strong `HR_API_KEY` 
+3. Use PostgreSQL instead of SQLite
+4. Set specific CORS origins (no wildcards)
+5. Review the [Security Guide](./docs/SECURITY.md)
+
+**Current Security Features:**
+- ✅ Security headers (XSS, clickjacking protection)
+- ✅ Rate limiting (10 req/hour for submissions, 30 req/min for tracking)
+- ✅ Input sanitization (HTML stripping, length validation)
+- ✅ API key authentication for HR endpoints
+- ✅ CORS configured for specific origins
+- ✅ Startup validation of critical settings
+
+**Recommended Future Enhancements:**
+- Azure AD/OAuth 2.0 authentication
+- Role-based access control (RBAC)
+- Audit logging
+- Monitoring with Azure Application Insights

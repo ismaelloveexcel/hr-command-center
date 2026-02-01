@@ -15,8 +15,14 @@ from app.models import request, notification
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/hour", "20/minute"])
+# Initialize rate limiter (disable in testing mode)
+import os
+testing_mode = os.getenv("TESTING", "false").lower() == "true"
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[] if testing_mode else ["100/hour", "20/minute"],
+    enabled=not testing_mode
+)
 
 app = FastAPI(
     title="UAE HR Portal API",
@@ -44,7 +50,8 @@ app.add_middleware(
 
 # Trusted host middleware to prevent host header attacks
 # Allow localhost for development and configured trusted hosts
-trusted_hosts = ["localhost", "127.0.0.1", "*.azurewebsites.net"]
+# Add testserver for test environments
+trusted_hosts = ["localhost", "127.0.0.1", "testserver", "*.azurewebsites.net"]
 if settings.trusted_hosts:
     trusted_hosts.extend(settings.trusted_hosts_list)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
