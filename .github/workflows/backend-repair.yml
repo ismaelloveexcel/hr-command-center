@@ -314,6 +314,7 @@ jobs:
           
           echo "✅ Deployment triggered"
           echo "Waiting for deployment workflow to start..."
+          # Wait for GitHub Actions to register the workflow run
           sleep 15
           
           # Get the workflow run ID
@@ -328,6 +329,9 @@ jobs:
             gh run watch "$RUN_ID" --exit-status || echo "⚠️ Deployment workflow failed, continuing to health check"
           else
             echo "⚠️ Could not find workflow run, waiting for deployment to complete..."
+            # Fallback: typical deployment time (build + package + deploy + start)
+            # Allows time for: pip install (~30s), zip creation (~5s), 
+            # Azure deployment (~45s), app startup (~30s)
             sleep 120
           fi
         env:
