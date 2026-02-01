@@ -83,7 +83,9 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Fastest method ⭐ |
+| [Deployment Advice](./DEPLOYMENT_ADVICE.md) | **Professional recommendations** | Understanding deployment strategy ⭐ |
+| [Deployment Troubleshooting](./DEPLOYMENT_TROUBLESHOOTING.md) | **Fixing deployment failures** | When deployment fails 🔧 |
+| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | Automated setup - One-command deployment | Fastest method |
 | [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
 | [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
