@@ -116,12 +116,12 @@ jobs:
           fi
           
           # Ensure Key Vault name meets requirements (3-24 chars, alphanumeric and hyphens, start with a letter)
-          KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g' | cut -c1-24)
+          KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
           # Azure Key Vault names must start with a letter; prefix with 'kv' if they do not
           if ! [[ "$KEYVAULT_NAME" =~ ^[a-z] ]]; then
             KEYVAULT_NAME="kv${KEYVAULT_NAME}"
           fi
-          # Enforce max length after prefixing
+          # Enforce max length (24 characters)
           KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
           # Ensure minimum length requirement (3 characters)
           if [ ${#KEYVAULT_NAME} -lt 3 ]; then

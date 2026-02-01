@@ -169,18 +169,18 @@ Use these tags to identify which resources belong to which deployment.
 
 ## 📊 Cost Impact
 
-Redundant resources cost money! Here's what you might be paying for unnecessarily:
+Redundant resources cost money! Here's an example of what you might be paying for unnecessarily:
 
-| Resource Type | Approximate Cost/Month | Your Count | Unnecessary Cost |
-|---------------|------------------------|------------|------------------|
-| App Service (B1) | $13 | 5-6 redundant | ~$65-78/month |
+| Resource Type | Approximate Cost/Month | Example: Redundant Count | Example: Unnecessary Cost |
+|---------------|------------------------|--------------------------|---------------------------|
+| App Service (B1) | $13 | 5-6 | ~$65-78/month |
 | Static Web App (Free) | $0 | Multiple | $0 |
 | App Service Plans | $13 each | 3-4 | ~$39-52/month |
 | Azure Database | $5-50 | 1-2 | ~$5-100/month |
 
-**Potential savings by cleanup: $100-200/month** 💰
+**Example potential savings by cleanup: $100-200/month** 💰
 
-> **Note**: Cost estimates are approximate and based on standard pricing. Actual costs may vary based on region, usage, and current Azure pricing. Check the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates.
+> **Note**: Cost estimates are approximate and based on standard pricing. Actual costs may vary based on region, usage, and current Azure pricing. Check the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates. The counts shown are example scenarios and may differ from your actual resources.
 
 ## ✅ Post-Cleanup Checklist
 
