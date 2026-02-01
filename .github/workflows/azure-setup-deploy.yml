@@ -73,14 +73,16 @@ jobs:
         run: |
           echo "::group::Input Validation"
           
+          BASE_NAME="${{ github.event.inputs.base_name }}"
+          
           # Validate base name (lowercase, alphanumeric only)
-          if [[ ! "${{ github.event.inputs.base_name }}" =~ ^[a-z0-9]+$ ]]; then
+          if [[ ! "$BASE_NAME" =~ ^[a-z0-9]+$ ]]; then
             echo "::error::Base name must be lowercase alphanumeric only"
             exit 1
           fi
           
           # Validate length
-          if [ ${#base_name} -gt 15 ]; then
+          if [ ${#BASE_NAME} -gt 15 ]; then
             echo "::error::Base name must be 15 characters or less"
             exit 1
           fi
