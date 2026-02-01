@@ -9,7 +9,7 @@ set -e
 BACKEND_NAME="baynunah-hr-api"
 FRONTEND_NAME="baynunah-hr-portal"
 RG="baynunah-hr-portal-rg"
-LOCATION="eastus"
+LOCATION="centralus"
 REPO="ismaelloveexcel/hr-command-center"
 
 # URLs
@@ -32,7 +32,7 @@ echo "✓ Ready"
 # Step 2: Static Web App (create with specific name)
 echo "[2/8] Creating Static Web App..."
 az staticwebapp show -n "$FRONTEND_NAME" -g "$RG" -o none 2>/dev/null || \
-    az staticwebapp create -n "$FRONTEND_NAME" -g "$RG" -l "$LOCATION" --sku Free -o none
+    az staticwebapp create -n "$FRONTEND_NAME" -g "$RG" -l "centralus" --sku Free -o none
 echo "✓ $FRONTEND_NAME created"
 
 # Step 3: App Service Plan
