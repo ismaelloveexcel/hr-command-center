@@ -15,11 +15,6 @@ from app.dependencies.security import require_hr_api_key
 router = APIRouter(prefix="/requests", tags=["requests"])
 
 
-def get_limiter(http_request: Request):
-    """Get the rate limiter from app state."""
-    return http_request.app.state.limiter
-
-
 @router.post("", response_model=RequestResponse, status_code=status.HTTP_201_CREATED)
 def create_request(
     http_request: Request,
@@ -34,9 +29,18 @@ def create_request(
     and sets status to 'submitted'.
     """
     # Apply rate limiting using shared limiter from app state
-    limiter = get_limiter(http_request)
+    limiter = http_request.app.state.limiter
     if limiter.enabled:
-        limiter.limit("10/hour")(lambda: None)()
+        # Check rate limit manually for this request
+        limiter._check_request_limit(
+            http_request,
+            "requests.create_request",
+            ["10/hour"],
+            None,
+            None,
+            limiter._key_func,
+            None
+        )
     
     try:
         db_request = request_service.create_request(db, request_data)
@@ -62,9 +66,18 @@ def track_request(
     Internal HR notes are NOT included in the response.
     """
     # Apply rate limiting using shared limiter from app state
-    limiter = get_limiter(http_request)
+    limiter = http_request.app.state.limiter
     if limiter.enabled:
-        limiter.limit("30/minute")(lambda: None)()
+        # Check rate limit manually for this request
+        limiter._check_request_limit(
+            http_request,
+            "requests.track_request",
+            ["30/minute"],
+            None,
+            None,
+            limiter._key_func,
+            None
+        )
     
     try:
         tracking_info = tracking_service.get_request_tracking(db, reference)
@@ -100,9 +113,18 @@ def update_request_status(
     Requires HR API key authentication.
     """
     # Apply rate limiting using shared limiter from app state
-    limiter = get_limiter(http_request)
+    limiter = http_request.app.state.limiter
     if limiter.enabled:
-        limiter.limit("100/minute")(lambda: None)()
+        # Check rate limit manually for this request
+        limiter._check_request_limit(
+            http_request,
+            "requests.update_request_status",
+            ["100/minute"],
+            None,
+            None,
+            limiter._key_func,
+            None
+        )
     
     try:
         db_request = request_service.update_request_status(db, reference, update_data)
