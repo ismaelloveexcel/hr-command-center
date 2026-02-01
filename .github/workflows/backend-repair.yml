@@ -42,7 +42,7 @@ jobs:
 
       # 3) If missing → RE-CREATE backend app
       - name: Create backend if missing
-        if: steps.detect.outputs.app == 'REPAIR_CREATE' && github.event.inputs.repair_mode == 'true'
+        if: steps.detect.outputs.app == 'REPAIR_CREATE' && (github.event.inputs.repair_mode == true || github.event_name == 'schedule')
         id: recreate
         run: |
           APP_NAME="hrportal-backend-new"
