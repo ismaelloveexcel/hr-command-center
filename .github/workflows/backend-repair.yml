@@ -324,6 +324,10 @@ jobs:
       - name: Wait for changes to apply
         run: |
           echo "⏳ Waiting for changes to apply..."
+          # Allow time for:
+          # - Configuration changes to propagate
+          # - App Service to restart (if needed)
+          # - Health endpoint to become available
           sleep 60
 
       - name: Verify health after repair

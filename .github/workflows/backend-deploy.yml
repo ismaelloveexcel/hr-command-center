@@ -85,7 +85,14 @@ jobs:
 
       - name: Verify app runs
         working-directory: backend
-        run: python -c "from main import app; print('✅ App imports successfully')"
+        run: |
+          # Basic import check - validates:
+          # - Python syntax is correct
+          # - All dependencies are installed
+          # - FastAPI app initializes without errors
+          # - Database models load correctly
+          # Full endpoint validation happens in health check after deployment
+          python -c "from main import app; print('✅ App imports successfully')"
 
       - name: Create deployment package
         run: |
