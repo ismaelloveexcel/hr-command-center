@@ -27,8 +27,9 @@ def apply_rate_limit(http_request: Request, endpoint_name: str, limit: str):
         return
     
     # Check rate limit for this request
-    # Using private method as slowapi doesn't expose a public programmatic API
-    # This is wrapped here to isolate the implementation detail
+    # Note: Using private method as slowapi doesn't currently expose a public programmatic API
+    # This is wrapped here to isolate the implementation detail and provide a stable interface
+    # TODO: Monitor slowapi releases for public API alternatives to reduce coupling
     try:
         limiter._check_request_limit(
             http_request,
