@@ -8,17 +8,6 @@ import bleach
 from typing import Optional
 
 
-# Allowed HTML tags and attributes for sanitized content
-ALLOWED_TAGS = [
-    'p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li',
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
-]
-
-ALLOWED_ATTRIBUTES = {
-    '*': ['class']
-}
-
-
 def sanitize_html(text: Optional[str]) -> Optional[str]:
     """
     Sanitize HTML content to prevent XSS attacks.

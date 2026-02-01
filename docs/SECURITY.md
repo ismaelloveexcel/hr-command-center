@@ -222,9 +222,16 @@ Planned security improvements:
 
 ## Security Contact
 
-For security vulnerabilities or concerns, please contact:
-- Create a private security advisory on GitHub
-- Or email: security@yourdomain.com (configure this)
+For security vulnerabilities or concerns:
+
+**Before Deployment**: Update this section with your organization's actual security contact information.
+
+Recommended options:
+- Create a private security advisory on GitHub (Settings → Security → Advisories)
+- Email: security@yourcompany.ae (replace with actual email)
+- Security team: Contact your IT security team directly
+
+**Note**: Never commit sensitive contact information or security keys to the repository.
 
 ## References
 
