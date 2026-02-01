@@ -180,6 +180,8 @@ Redundant resources cost money! Here's what you might be paying for unnecessaril
 
 **Potential savings by cleanup: $100-200/month** 💰
 
+> **Note**: Cost estimates are approximate and based on standard pricing. Actual costs may vary based on region, usage, and current Azure pricing. Check the [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates.
+
 ## ✅ Post-Cleanup Checklist
 
 After cleaning up, verify your production setup:

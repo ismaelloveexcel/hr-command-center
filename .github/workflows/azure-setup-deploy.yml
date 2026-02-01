@@ -120,8 +120,12 @@ jobs:
           # Azure Key Vault names must start with a letter; prefix with 'kv' if they do not
           if ! [[ "$KEYVAULT_NAME" =~ ^[a-z] ]]; then
             KEYVAULT_NAME="kv${KEYVAULT_NAME}"
-            # Enforce max length after prefixing
-            KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
+          fi
+          # Enforce max length after prefixing
+          KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
+          # Ensure minimum length requirement (3 characters)
+          if [ ${#KEYVAULT_NAME} -lt 3 ]; then
+            KEYVAULT_NAME="kvault${UNIQUE_SUFFIX}"
           fi
           
           echo "resource_group=${{ github.event.inputs.resource_group }}" >> $GITHUB_OUTPUT
@@ -397,8 +401,8 @@ jobs:
             sleep 15
           done
           
-          echo "::error::Backend health check failed after 10 attempts"
-          echo "⚠️ Backend may still be starting up. Check manually at: ${BACKEND_URL}/health"
+          echo "::error::Backend health check did not pass within expected timeframe"
+          echo "Backend URL: ${BACKEND_URL}/health"
           echo "::endgroup::"
           exit 1
 
@@ -492,8 +496,8 @@ jobs:
             sleep 15
           done
           
-          echo "::error::Frontend health check failed after 8 attempts"
-          echo "⚠️ Frontend may still be deploying. Check manually at: ${FRONTEND_URL}"
+          echo "::error::Frontend verification did not pass within expected timeframe"
+          echo "Frontend URL: ${FRONTEND_URL}"
           echo "::endgroup::"
           exit 1
 
