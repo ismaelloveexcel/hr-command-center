@@ -1,26 +1,24 @@
 # REPO RULES (Do Not Modify)
-
-These rules enforce simplicity, stability, and HR-first design.
+These rules enforce simplicity, control, and HR-first design.
 
 ## Build Principles
-- Every feature must reduce HR workload or compliance risk. If not, it will not be built.
-- The repository must remain easy to understand by HR, not only developers.
+- Every feature must reduce HR workload or compliance risk.
+- All code must be understandable by HR.
 
 ## Architecture Constraints
-- One request system only.
+- One unified request system only.
 - One HR dashboard only.
 - No pass systems.
-- No multiple dashboards.
-- No gamification or analytics dashboards.
-- No additional modules without being explicitly defined in roadmap.
+- No extra dashboards.
+- No analytics dashboards or charts, except where explicitly defined in the roadmap (e.g., planned Analytics & Reporting phases).
+- No additional modules beyond those explicitly defined in this document.
 
 ## Code Constraints
-- No file should exceed 400 lines.
-- All code must be human-readable.
-- No placeholders for future features.
-- Only build features defined in the phases.
+- No file > 400 lines.
+- No placeholders for future ideas.
+- No dead code.
+- No generated stubs unless currently needed.
 
-## Security & Compliance
+## Security
+- No personal data in logs.
 - No credentials in repo.
-- No personal data logged in plaintext.
-- All HR lifecycle changes must be logged.

@@ -1,18 +1,18 @@
-# Project Context for Cursor
-
+# Cursor Project Context
 This project is an employee-friendly HR portal for a UAE-based company.
 
 ## Priorities
 - Simplicity over features
-- HR control and auditability
+- Unified request system
 - Employee clarity
-- UAE compliance awareness
+- HR control & auditability
 - Azure deployment
+- UAE compliance awareness
 
 ## Constraints
-- One request system only
-- One main HR dashboard
+- One unified request system only
+- One HR dashboard
 - No pass systems
-- No multiple dashboards
-- No unnecessary charts or gamification
-- Keep file sizes small and code readable
+- No extra dashboards
+- No gamification
+- Clean, small files
