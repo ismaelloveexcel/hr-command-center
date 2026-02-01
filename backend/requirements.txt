@@ -1,8 +1,10 @@
 fastapi==0.109.1
 uvicorn[standard]==0.24.0
-# Pre-pinned for upcoming database and validation phases
-# Database and migrations
+gunicorn==21.2.0
+# Database and ORM
+sqlalchemy==2.0.25
 alembic==1.13.1
 psycopg2-binary==2.9.9
+# Configuration
 python-dotenv==1.0.0
 pydantic-settings==2.1.0
