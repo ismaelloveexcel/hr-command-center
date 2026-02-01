@@ -101,20 +101,6 @@ jobs:
           cd ..
           ls -lh deploy.zip
 
-      - name: Get publish profile for deployment
-        id: get_profile
-        run: |
-          echo "📥 Getting publish profile..."
-          
-          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --xml)
-          
-          # Save to file for deployment
-          echo "$PUBLISH_PROFILE" > /tmp/publish_profile.xml
-          echo "profile_path=/tmp/publish_profile.xml" >> $GITHUB_OUTPUT
-
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:

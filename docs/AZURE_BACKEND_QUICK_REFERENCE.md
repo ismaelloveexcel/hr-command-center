@@ -6,11 +6,11 @@
 
 Create service principal and configure federated credentials:
 ```bash
-# Create service principal
+# Create service principal scoped to resource group (least privilege)
 az ad sp create-for-rbac \
   --name "github-actions-hr-portal" \
   --role contributor \
-  --scopes /subscriptions/{subscription-id}
+  --scopes /subscriptions/{subscription-id}/resourceGroups/baynunah-hr-portal-rg
 
 # Note the output: appId, tenant, subscription
 ```

@@ -112,14 +112,14 @@ jobs:
           elif [ "$HEALTH_OK" = false ]; then
             echo "state=unhealthy" >> $GITHUB_OUTPUT
             echo "needs_deployment=true" >> $GITHUB_OUTPUT
-            echo "needs_config_fix=$( [ '$CONFIG_OK' = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
-            echo "needs_secret_sync=$( [ '$SECRET_OK' = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=$( [ "$CONFIG_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=$( [ "$SECRET_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
             echo "⚠️ Backend is UNHEALTHY"
           else
             echo "state=misconfigured" >> $GITHUB_OUTPUT
             echo "needs_deployment=false" >> $GITHUB_OUTPUT
-            echo "needs_config_fix=$( [ '$CONFIG_OK' = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
-            echo "needs_secret_sync=$( [ '$SECRET_OK' = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=$( [ "$CONFIG_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=$( [ "$SECRET_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
             echo "⚠️ Backend is MISCONFIGURED"
           fi
 
@@ -313,8 +313,23 @@ jobs:
             --repo ${{ github.repository }}
           
           echo "✅ Deployment triggered"
-          echo "Waiting for deployment to start..."
-          sleep 10
+          echo "Waiting for deployment workflow to start..."
+          sleep 15
+          
+          # Get the workflow run ID
+          RUN_ID=$(gh run list \
+            --workflow=backend-deploy.yml \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          
+          if [ -n "$RUN_ID" ]; then
+            echo "Monitoring deployment workflow run $RUN_ID..."
+            gh run watch "$RUN_ID" --exit-status || echo "⚠️ Deployment workflow failed, continuing to health check"
+          else
+            echo "⚠️ Could not find workflow run, waiting for deployment to complete..."
+            sleep 120
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -8,7 +8,7 @@ This implementation creates a complete autonomous deployment and self-healing sy
 
 ### 1. Workflows
 
-#### backend-bootstrap.yml (367 lines)
+#### backend-bootstrap.yml (384 lines)
 **Purpose**: First-time deployment only
 
 **Key Features**:
@@ -34,7 +34,7 @@ This implementation creates a complete autonomous deployment and self-healing sy
 - Backend already exists → Exit 1 with guidance
 - Health check fails → Exit 1 with logs
 
-#### backend-deploy.yml (154 lines)
+#### backend-deploy.yml (156 lines)
 **Purpose**: Regular code deployments
 
 **Key Features**:
@@ -55,7 +55,7 @@ This implementation creates a complete autonomous deployment and self-healing sy
 - Manual via workflow_dispatch
 - Called by backend-repair.yml
 
-#### backend-repair.yml (484 lines)
+#### backend-repair.yml (441 lines)
 **Purpose**: Autonomous self-healing and repair
 
 **Key Features**:

@@ -183,7 +183,6 @@ jobs:
           
           if [ -n "$EXISTING_KEY" ]; then
             echo "✅ HR_API_KEY already exists in Azure"
-            echo "hr_api_key=$EXISTING_KEY" >> $GITHUB_OUTPUT
           elif [ -n "${{ steps.generate_secrets.outputs.hr_api_key }}" ]; then
             echo "Setting new HR_API_KEY in Azure..."
             az webapp config appsettings set \
@@ -191,7 +190,6 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --settings HR_API_KEY="${{ steps.generate_secrets.outputs.hr_api_key }}"
             echo "✅ HR_API_KEY set in Azure"
-            echo "hr_api_key=${{ steps.generate_secrets.outputs.hr_api_key }}" >> $GITHUB_OUTPUT
           else
             echo "❌ ERROR: No HR_API_KEY available"
             exit 1
