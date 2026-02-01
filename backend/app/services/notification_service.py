@@ -160,42 +160,6 @@ New Status: {status_message}
             trigger_entity_id=request_id
         )
     
-    def notify_critical_compliance_alert(
-        self,
-        event_id: int,
-        event_title: str,
-        event_date: str,
-        days_until: int
-    ):
-        """
-        Notify about critical compliance deadlines.
-        
-        In a real implementation, this would alert HR staff via SMS/email.
-        """
-        urgency = "URGENT" if days_until <= 7 else "IMPORTANT"
-        
-        message = f"""
-{urgency} COMPLIANCE ALERT
-
-{event_title}
-Due Date: {event_date}
-Time Remaining: {days_until} days
-
-Please take immediate action to ensure compliance.
-
-UAE HR Portal
-        """.strip()
-        
-        self._log_notification(
-            notification_type="compliance_alert",
-            recipient="hr.compliance@company.ae",
-            subject=f"{urgency}: {event_title}",
-            message=message,
-            trigger_entity_type="compliance_event",
-            trigger_entity_id=event_id
-        )
-
-
 def get_notification_service(db: Session) -> NotificationService:
     """Get notification service instance."""
     return NotificationService(db)
