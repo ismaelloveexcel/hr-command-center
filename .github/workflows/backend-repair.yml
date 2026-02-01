@@ -1,0 +1,116 @@
+name: Auto-Fix + Repair Backend Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      repair_mode:
+        type: boolean
+        default: true
+  schedule:
+    - cron: "0 */6 * * *"
+
+permissions:
+  id-token: write
+  contents: write
+  actions: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) Azure login (OIDC)
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # 2) Detect backend app automatically
+      - name: Detect backend app
+        id: detect
+        run: |
+          APP=$(az webapp list --query "[?contains(name,'backend')].name|[0]" -o tsv)
+          if [ -z "$APP" ]; then
+            echo "app=REPAIR_CREATE" >> $GITHUB_OUTPUT
+          else
+            echo "app=$APP" >> $GITHUB_OUTPUT
+          fi
+
+      # 3) If missing → RE-CREATE backend app
+      - name: Create backend if missing
+        if: steps.detect.outputs.app == 'REPAIR_CREATE' && github.event.inputs.repair_mode == 'true'
+        id: recreate
+        run: |
+          APP_NAME="hrportal-backend-new"
+          RG="baynunah-hr-portal-rg"
+          PLAN="hrportal-plan-be"
+          az group create -n $RG -l uaenorth
+          az appservice plan create -n $PLAN -g $RG --sku B1 --is-linux
+          az webapp create -n $APP_NAME -g $RG --plan $PLAN --runtime "python|3.11"
+          echo "app=$APP_NAME" >> $GITHUB_OUTPUT
+
+      # 4) Ensure required config (startup, CORS, DB, HR key)
+      - name: Apply backend repair settings
+        id: config
+        run: |
+          APP="${{ steps.detect.outputs.app }}"
+          if [ "$APP" = "REPAIR_CREATE" ]; then
+            APP="${{ steps.recreate.outputs.app }}"
+          fi
+          RG="baynunah-hr-portal-rg"
+          HR_KEY=$(openssl rand -hex 24)
+          az webapp config set -n $APP -g $RG --startup-file "bash startup.sh"
+          az webapp config appsettings set -n $APP -g $RG --settings \
+            DATABASE_URL="sqlite:///./hr_portal.db" \
+            HR_API_KEY="$HR_KEY" \
+            CORS_ORIGINS="https://baynunah-hr-portal.azurewebsites.net" \
+            SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+            WEBSITE_RUN_FROM_PACKAGE=1
+
+          echo "app=$APP" >> $GITHUB_OUTPUT
+
+      # 5) Regenerate publish profile ALWAYS (repair)
+      - name: Regenerate publish profile
+        id: profile
+        run: |
+          APP="${{ steps.config.outputs.app }}"
+          RG="baynunah-hr-portal-rg"
+          az webapp deployment list-publishing-profiles \
+            --name "$APP" --resource-group "$RG" \
+            --xml > profile.xml
+          echo "profile<<EOF" >> $GITHUB_OUTPUT
+          cat profile.xml >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 6) Update GitHub secrets
+      - name: Update GitHub secrets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh secret set AZURE_BACKEND_PUBLISH_PROFILE --body "${{ steps.profile.outputs.profile }}"
+          gh secret set AZURE_BACKEND_APP_NAME --body "${{ steps.config.outputs.app }}"
+
+      # 7) Trigger deployment automatically
+      - name: Trigger backend deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run backend-deploy.yml
+
+      # 8) Delay + health check
+      - name: Wait
+        run: sleep 45
+
+      - name: Health Check
+        run: |
+          APP="${{ steps.config.outputs.app }}"
+          URL="https://$APP.azurewebsites.net/health"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" $URL)
+          if [ "$CODE" != "200" ]; then
+            echo "❌ Repair mode: health check failed"
+            exit 1
+          fi
+          echo "✅ Repair mode: backend healthy"
