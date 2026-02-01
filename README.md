@@ -66,11 +66,40 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
-The project includes automated Azure deployment with comprehensive documentation:
+The project includes autonomous Azure deployment with self-healing capabilities:
 
-### 🤖 Automated Setup (Recommended)
+### ⚡ Autonomous Backend Deployment (New!)
 
-**One command to deploy everything:**
+**Three GitHub Actions workflows with zero manual intervention:**
+
+1. **backend-bootstrap.yml** - First-time deployment (run once)
+2. **backend-deploy.yml** - Automatic code deployments (on push to main)
+3. **backend-repair.yml** - Autonomous self-healing (every 6 hours)
+
+**Quick start:**
+```bash
+# 1. Configure OIDC secrets (see docs)
+# 2. Run bootstrap workflow
+gh workflow run backend-bootstrap.yml
+
+# 3. Done! Future deployments are automatic
+```
+
+**Key Features:**
+- ✅ 100% idempotent - safe to run multiple times
+- ✅ Azure OIDC authentication (no credentials in GitHub)
+- ✅ Autonomous repair - fixes issues automatically
+- ✅ Fail-hard with diagnostics - no silent failures
+- ✅ Secret generation & sync (never rotates unless missing)
+- ✅ Health verification with retries
+
+**Documentation:**
+- [Azure Backend Workflows Guide](./docs/AZURE_BACKEND_WORKFLOWS.md) - Complete guide
+- [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) - Common commands
+
+### 🤖 Legacy Automated Setup
+
+**One command to deploy everything (alternative method):**
 
 ```bash
 cd infrastructure && ./setup-azure.sh
@@ -83,7 +112,9 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Fastest method ⭐ |
+| [Azure Backend Workflows](./docs/AZURE_BACKEND_WORKFLOWS.md) | **Autonomous workflows** - New deployment system | Production deployments ⭐ |
+| [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) | Common commands & troubleshooting | Daily operations ⭐ |
+| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Legacy method |
 | [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
 | [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
@@ -92,21 +123,47 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 ### Quick Start
 
-**Option A: Automated (⭐ Recommended)**
+**Option A: Autonomous Workflows (⭐ Recommended)**
+```bash
+# Prerequisites
+brew install azure-cli gh    # Install CLIs
+az login && gh auth login    # Login
+
+# Configure OIDC (one-time setup)
+# See: docs/AZURE_BACKEND_WORKFLOWS.md
+
+# Deploy backend
+gh workflow run backend-bootstrap.yml
+
+# Deploy frontend (use existing workflow or manual setup)
+```
+
+**Option B: Legacy Automated**
 ```bash
 brew install azure-cli gh    # Install CLIs
 az login && gh auth login    # Login
 cd infrastructure && ./setup-azure.sh  # Deploy!
 ```
 
-**Option B: Manual**
+**Option C: Manual**
 1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
 2. **Create resources** - Follow [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
-3. **Configure secrets** - Add 4 secrets to GitHub repository
+3. **Configure secrets** - Add required secrets to GitHub repository
 4. **Push to main** - Automatic deployment triggers
 5. **Verify** - Use [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md)
 
 ### GitHub Secrets Required
+
+**For Autonomous Workflows (Recommended):**
+
+| Secret | Description |
+|--------|-------------|
+| `AZURE_CLIENT_ID` | Service principal client ID for OIDC authentication |
+| `AZURE_TENANT_ID` | Azure tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| `FRONTEND_URL` | Frontend URL for CORS (optional) |
+
+**For Legacy Workflows:**
 
 | Secret | Description |
 |--------|-------------|
@@ -115,7 +172,9 @@ cd infrastructure && ./setup-azure.sh  # Deploy!
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Token from Static Web App |
 | `REACT_APP_API_URL` | Backend URL (https://...) |
 
-**📋 See [Deployment Status](./docs/DEPLOYMENT_STATUS.md) for current deployment readiness.**
+**Note:** Autonomous workflows auto-generate and sync `HR_API_KEY` and publish profiles.
+
+**📋 See [Azure Backend Workflows Guide](./docs/AZURE_BACKEND_WORKFLOWS.md) for OIDC setup.**
 
 ## Environment Variables
 
