@@ -39,7 +39,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         
         # Enforce HTTPS (only in production)
         # Note: Disabled in development to allow http://localhost
-        if not request.url.hostname in ["localhost", "127.0.0.1"]:
+        if request.url.hostname not in ["localhost", "127.0.0.1"]:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         
         # Content Security Policy - restrict resource loading
