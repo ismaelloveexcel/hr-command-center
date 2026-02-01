@@ -22,12 +22,13 @@ def test_security_headers_present(client):
 
 
 def test_cors_headers(client):
-    """Test CORS headers are configured."""
-    # Test with GET request (OPTIONS not needed for our test)
+    """Test CORS headers are configured properly."""
+    # Test with proper origin header
     response = client.get("/health", headers={"Origin": "http://localhost:3000"})
     assert response.status_code == 200
-    # CORS headers should be present
-    assert "access-control-allow-origin" in response.headers or response.status_code == 200
+    # Verify CORS headers are present
+    assert "access-control-allow-origin" in response.headers
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
 
 
 def test_create_request_basic(client):
@@ -39,13 +40,11 @@ def test_create_request_basic(client):
     }
     
     response = client.post("/requests", json=request_data)
-    # Note: May get 429 if rate limit already hit in other tests
-    assert response.status_code in [201, 429]
-    if response.status_code == 201:
-        data = response.json()
-        assert data["title"] == "Test Request Security 1"
-        assert data["status"] == "submitted"
-        assert "reference" in data
+    assert response.status_code == 201
+    data = response.json()
+    assert data["title"] == "Test Request Security 1"
+    assert data["status"] == "submitted"
+    assert "reference" in data
 
 
 def test_input_sanitization_html_stripped(client):
@@ -57,16 +56,14 @@ def test_input_sanitization_html_stripped(client):
     }
     
     response = client.post("/requests", json=request_data)
-    # Note: May get 429 if rate limit already hit
-    assert response.status_code in [201, 429]
-    if response.status_code == 201:
-        data = response.json()
-        # HTML tags should be stripped (but safe text content remains)
-        assert "<script>" not in data["title"]
-        assert "</script>" not in data["title"]
-        assert "<b>" not in data.get("description", "")
-        assert "<img" not in data["submitted_by"]
-        assert "onerror" not in data["submitted_by"]  # XSS attempt removed
+    assert response.status_code == 201
+    data = response.json()
+    # HTML tags should be stripped (but safe text content remains)
+    assert "<script>" not in data["title"]
+    assert "</script>" not in data["title"]
+    assert "<b>" not in data.get("description", "")
+    assert "<img" not in data["submitted_by"]
+    assert "onerror" not in data["submitted_by"]  # XSS attempt removed
 
 
 def test_status_validation(client, hr_api_key):
@@ -78,10 +75,6 @@ def test_status_validation(client, hr_api_key):
         "submitted_by": "testval@company.ae"
     }
     create_response = client.post("/requests", json=request_data)
-    # Skip test if rate limited
-    if create_response.status_code == 429:
-        pytest.skip("Rate limit hit - rate limiting is working")
-    
     assert create_response.status_code == 201
     reference = create_response.json()["reference"]
     
@@ -100,8 +93,9 @@ def test_status_validation(client, hr_api_key):
     assert response.status_code == 422  # Validation error
 
 
-def test_hr_endpoint_requires_api_key(client):
+def test_hr_endpoint_requires_api_key(client, hr_api_key):
     """Test that HR endpoints require API key."""
+    # Don't pass any API key header
     response = client.get("/hr/requests")
     assert response.status_code == 401  # Unauthorized
 
@@ -116,8 +110,9 @@ def test_hr_endpoint_with_valid_api_key(client, hr_api_key):
     assert isinstance(response.json(), list)
 
 
-def test_hr_endpoint_with_invalid_api_key(client):
+def test_hr_endpoint_with_invalid_api_key(client, hr_api_key):
     """Test HR endpoint with invalid API key."""
+    # Pass an incorrect API key
     response = client.get(
         "/hr/requests",
         headers={"X-HR-API-Key": "invalid-key"}
@@ -134,10 +129,6 @@ def test_request_tracking_public_access(client):
         "submitted_by": "userpub@company.ae"
     }
     create_response = client.post("/requests", json=request_data)
-    # Skip test if rate limited
-    if create_response.status_code == 429:
-        pytest.skip("Rate limit hit - rate limiting is working")
-    
     assert create_response.status_code == 201
     reference = create_response.json()["reference"]
     

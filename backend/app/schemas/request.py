@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from app.core.validation import sanitize_text
+from app.models.request import RequestStatus
 
 
 class RequestBase(BaseModel):
@@ -19,7 +20,8 @@ class RequestBase(BaseModel):
     @classmethod
     def sanitize_title(cls, v: str) -> str:
         """Sanitize title to prevent XSS attacks."""
-        sanitized = sanitize_text(v, max_length=200)
+        # Don't pass max_length here - let Field validation handle it
+        sanitized = sanitize_text(v)
         if not sanitized or not sanitized.strip():
             raise ValueError("Title cannot be empty after sanitization")
         return sanitized
@@ -30,7 +32,8 @@ class RequestBase(BaseModel):
         """Sanitize description to prevent XSS attacks."""
         if v is None:
             return None
-        return sanitize_text(v, max_length=2000)
+        # Don't pass max_length here - let Field validation handle it
+        return sanitize_text(v)
 
 
 class RequestCreate(RequestBase):
@@ -45,7 +48,8 @@ class RequestCreate(RequestBase):
     @classmethod
     def sanitize_submitted_by(cls, v: str) -> str:
         """Sanitize submitted_by field."""
-        sanitized = sanitize_text(v, max_length=100)
+        # Don't pass max_length here - let Field validation handle it
+        sanitized = sanitize_text(v)
         if not sanitized or not sanitized.strip():
             raise ValueError("submitted_by cannot be empty after sanitization")
         return sanitized
@@ -68,7 +72,8 @@ class RequestUpdate(BaseModel):
         """Validate status is one of the allowed values."""
         if v is None:
             return None
-        allowed_statuses = ['submitted', 'reviewing', 'approved', 'completed', 'rejected']
+        # Use RequestStatus enum values for validation
+        allowed_statuses = [status.value for status in RequestStatus]
         v_lower = v.lower().strip()
         if v_lower not in allowed_statuses:
             raise ValueError(f"Status must be one of: {', '.join(allowed_statuses)}")
@@ -80,7 +85,8 @@ class RequestUpdate(BaseModel):
         """Sanitize notes fields to prevent XSS attacks."""
         if v is None:
             return None
-        return sanitize_text(v, max_length=2000)
+        # Don't pass max_length here - let Field validation handle it
+        return sanitize_text(v)
     
     @field_validator('reviewed_by')
     @classmethod
@@ -88,7 +94,8 @@ class RequestUpdate(BaseModel):
         """Sanitize reviewed_by field."""
         if v is None:
             return None
-        return sanitize_text(v, max_length=100)
+        # Don't pass max_length here - let Field validation handle it
+        return sanitize_text(v)
 
 
 class RequestResponse(RequestBase):

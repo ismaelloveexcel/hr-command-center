@@ -6,8 +6,6 @@ Unified request system for the UAE HR Portal.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from app.database import get_db
 from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
 from app.schemas.tracking import RequestTrackingResponse
@@ -16,14 +14,15 @@ from app.dependencies.security import require_hr_api_key
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
-# Initialize rate limiter for this router
-limiter = Limiter(key_func=get_remote_address)
+
+def get_limiter(http_request: Request):
+    """Get the rate limiter from app state."""
+    return http_request.app.state.limiter
 
 
 @router.post("", response_model=RequestResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/hour")  # Limit request creation to prevent spam
 def create_request(
-    request: Request,
+    http_request: Request,
     request_data: RequestCreate,
     db: Session = Depends(get_db)
 ):
@@ -34,6 +33,11 @@ def create_request(
     The system automatically generates a unique reference (REF-YYYY-NNN)
     and sets status to 'submitted'.
     """
+    # Apply rate limiting using shared limiter from app state
+    limiter = get_limiter(http_request)
+    if limiter.enabled:
+        limiter.limit("10/hour")(lambda: None)()
+    
     try:
         db_request = request_service.create_request(db, request_data)
         return db_request
@@ -45,9 +49,8 @@ def create_request(
 
 
 @router.get("/{reference}", response_model=RequestTrackingResponse)
-@limiter.limit("30/minute")  # Allow reasonable tracking frequency
 def track_request(
-    request: Request,
+    http_request: Request,
     reference: str,
     db: Session = Depends(get_db)
 ):
@@ -58,6 +61,11 @@ def track_request(
     Returns sanitized information suitable for employee viewing.
     Internal HR notes are NOT included in the response.
     """
+    # Apply rate limiting using shared limiter from app state
+    limiter = get_limiter(http_request)
+    if limiter.enabled:
+        limiter.limit("30/minute")(lambda: None)()
+    
     try:
         tracking_info = tracking_service.get_request_tracking(db, reference)
         return tracking_info
@@ -78,9 +86,8 @@ def track_request(
     response_model=RequestResponse,
     dependencies=[Depends(require_hr_api_key)]
 )
-@limiter.limit("100/minute")  # Higher limit for authenticated HR staff
 def update_request_status(
-    request: Request,
+    http_request: Request,
     reference: str,
     update_data: RequestUpdate,
     db: Session = Depends(get_db)
@@ -92,6 +99,11 @@ def update_request_status(
     Valid status values: submitted, reviewing, approved, completed, rejected
     Requires HR API key authentication.
     """
+    # Apply rate limiting using shared limiter from app state
+    limiter = get_limiter(http_request)
+    if limiter.enabled:
+        limiter.limit("100/minute")(lambda: None)()
+    
     try:
         db_request = request_service.update_request_status(db, reference, update_data)
         return db_request

@@ -145,10 +145,6 @@ def test_status_filter_in_hr_queue(client, hr_api_key):
         "submitted_by": "testfilter@company.ae"
     }
     create_response = client.post("/requests", json=request_data)
-    # Skip test if rate limited
-    if create_response.status_code == 429:
-        pytest.skip("Rate limit hit - rate limiting is working")
-    
     assert create_response.status_code == 201
     reference = create_response.json()["reference"]
     

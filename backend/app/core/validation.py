@@ -4,6 +4,7 @@ Input validation and sanitization utilities.
 Provides functions to sanitize user input and prevent XSS attacks.
 """
 
+import re
 import bleach
 from typing import Optional
 
@@ -66,7 +67,6 @@ def validate_reference_format(reference: str) -> bool:
     Returns:
         True if reference is valid, False otherwise
     """
-    import re
     pattern = r'^REF-\d{4}-\d{3}$'
     return bool(re.match(pattern, reference))
 
@@ -80,8 +80,10 @@ def validate_email(email: str) -> bool:
         
     Returns:
         True if email appears valid, False otherwise
+    
+    Note: This is a basic validation. For production use, consider
+    using pydantic.EmailStr or email-validator library for RFC-compliant validation.
     """
-    import re
     # Basic email pattern - not exhaustive but catches obvious issues
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))

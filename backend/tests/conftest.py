@@ -2,7 +2,6 @@
 Test configuration and fixtures.
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -11,9 +10,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 
-# Set testing mode before importing main
-os.environ["TESTING"] = "true"
-
+# Import main after pytest is loaded (sys.modules check will detect pytest)
 from main import app
 
 # Create in-memory SQLite database for testing
@@ -58,10 +55,11 @@ def client(db_session):
 
 
 @pytest.fixture
-def hr_api_key():
+def hr_api_key(monkeypatch):
     """Return the HR API key for testing."""
     from app.config import settings
-    # Set a test API key if not configured
-    if not settings.hr_api_key:
-        settings.hr_api_key = "test-hr-api-key-12345"
-    return settings.hr_api_key
+    # Use existing key if configured; otherwise, use a test key
+    test_key = settings.hr_api_key or "test-hr-api-key-12345"
+    # Temporarily patch the settings for this test to avoid global side effects
+    monkeypatch.setattr(settings, "hr_api_key", test_key)
+    return test_key

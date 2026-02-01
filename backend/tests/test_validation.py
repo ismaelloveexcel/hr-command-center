@@ -1,6 +1,5 @@
 """Tests for input validation utilities."""
 
-import pytest
 from app.core.validation import (
     sanitize_html,
     sanitize_text,

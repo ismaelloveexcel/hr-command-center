@@ -17,10 +17,11 @@ Base.metadata.create_all(bind=engine)
 
 # Initialize rate limiter (disable in testing mode)
 import os
-testing_mode = os.getenv("TESTING", "false").lower() == "true"
+import sys
+# Check if running under pytest instead of using environment variable
+testing_mode = "pytest" in sys.modules
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=[] if testing_mode else ["100/hour", "20/minute"],
     enabled=not testing_mode
 )
 
@@ -51,7 +52,13 @@ app.add_middleware(
 # Trusted host middleware to prevent host header attacks
 # Allow localhost for development and configured trusted hosts
 # Add testserver for test environments
-trusted_hosts = ["localhost", "127.0.0.1", "testserver", "*.azurewebsites.net"]
+trusted_hosts = ["localhost", "127.0.0.1", "testserver"]
+
+# Optionally trust a specific Azure App Service hostname via environment variable
+azure_website_hostname = os.getenv("AZURE_WEBSITE_HOSTNAME")
+if azure_website_hostname:
+    trusted_hosts.append(azure_website_hostname)
+
 if settings.trusted_hosts:
     trusted_hosts.extend(settings.trusted_hosts_list)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
@@ -88,7 +95,7 @@ async def validate_configuration():
         )
     
     # Warn if CORS origins include wildcards with credentials
-    if "*" in settings.cors_origins and not settings.debug:
+    if settings.cors_origins == "*" or (isinstance(settings.cors_origins, str) and "*" in settings.cors_origins.split(",")):
         logger.error(
             "❌ CORS wildcard (*) is not allowed with credentials! "
             "Configure specific origins in CORS_ORIGINS environment variable."

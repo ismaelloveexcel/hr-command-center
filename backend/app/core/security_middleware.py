@@ -5,7 +5,7 @@ Adds security headers and request size limits to protect against common
 web vulnerabilities.
 """
 
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
