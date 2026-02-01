@@ -9,6 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -18,36 +19,14 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        working-directory: ./backend
-        run: pip install -r requirements.txt
-
-      - name: Create deployment package
         run: |
           cd backend
-          zip -r ../app.zip . -x "*.pyc" -x "__pycache__/*" -x ".env" -x "*.db" -x ".git/*"
-          cd ..
-          ls -la app.zip
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Deploy using cURL
-        env:
-          PUBLISH_PROFILE: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-        run: |
-          # Extract credentials from publish profile
-          USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
-          PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
-          SITE=$(echo "$PUBLISH_PROFILE" | grep -oP 'publishUrl="\K[^"]+' | head -1)
-          
-          echo "Deploying to: $SITE"
-          
-          # Deploy via Kudu ZIP deploy
-          curl -X POST \
-            --user "$USERNAME:$PASSWORD" \
-            --data-binary @app.zip \
-            "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.scm.azurewebsites.net/api/zipdeploy" \
-            --fail \
-            -w "\nHTTP Status: %{http_code}\n"
-
-      - name: Verify deployment
-        run: |
-          sleep 30
-          curl -f "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.azurewebsites.net/health" || echo "Health check pending..."
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'baynunah-hr-api'
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          package: ./backend
