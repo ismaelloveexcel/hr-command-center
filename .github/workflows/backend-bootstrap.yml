@@ -1,0 +1,384 @@
+name: Backend Bootstrap (First Deployment)
+
+# This workflow handles first-time deployment ONLY
+# Run this workflow manually to bootstrap the backend infrastructure
+on:
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: baynunah-hr-portal-rg
+  AZURE_LOCATION: uaenorth
+  AZURE_APP_SERVICE_PLAN: hrportal-plan-be
+  AZURE_WEBAPP_NAME: hrportal-backend
+  PYTHON_VERSION: '3.11'
+  CONFIG_VERSION: '1.0.0'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ========================================
+      # STEP 1: PREFLIGHT VALIDATION
+      # ========================================
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate required files exist
+        working-directory: backend
+        run: |
+          echo "🔍 Validating required files..."
+          
+          if [ ! -f "startup.sh" ]; then
+            echo "❌ ERROR: startup.sh not found"
+            exit 1
+          fi
+          
+          if [ ! -f "requirements.txt" ]; then
+            echo "❌ ERROR: requirements.txt not found"
+            exit 1
+          fi
+          
+          if [ ! -f "main.py" ]; then
+            echo "❌ ERROR: main.py not found"
+            exit 1
+          fi
+          
+          echo "✅ All required files exist"
+
+      - name: Validate required GitHub secrets exist
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          echo "🔍 Validating GitHub secrets..."
+          
+          if [ -z "$AZURE_CLIENT_ID" ]; then
+            echo "❌ ERROR: AZURE_CLIENT_ID secret is missing"
+            echo "Configure OIDC authentication: https://learn.microsoft.com/azure/developer/github/connect-from-azure"
+            exit 1
+          fi
+          
+          if [ -z "$AZURE_TENANT_ID" ]; then
+            echo "❌ ERROR: AZURE_TENANT_ID secret is missing"
+            exit 1
+          fi
+          
+          if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
+            echo "❌ ERROR: AZURE_SUBSCRIPTION_ID secret is missing"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets configured"
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate backend does NOT already exist
+        id: check_exists
+        run: |
+          echo "🔍 Checking if backend already exists..."
+          
+          # Check if web app already exists
+          if az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "❌ ERROR: Web app '${{ env.AZURE_WEBAPP_NAME }}' already exists!"
+            echo "This is a bootstrap workflow for first-time deployment only."
+            echo "Use 'backend-deploy.yml' for regular deployments."
+            echo "Use 'backend-repair.yml' to fix existing infrastructure."
+            exit 1
+          fi
+          
+          echo "✅ Backend does not exist - ready for bootstrap"
+
+      # ========================================
+      # STEP 2: CREATE INFRASTRUCTURE
+      # ========================================
+      - name: Create Resource Group (if missing)
+        run: |
+          echo "🏗️ Creating resource group if needed..."
+          
+          if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "✅ Resource group already exists"
+          else
+            echo "Creating resource group..."
+            az group create \
+              --name ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }}
+            echo "✅ Resource group created"
+          fi
+
+      - name: Create App Service Plan (if missing)
+        run: |
+          echo "🏗️ Creating App Service Plan if needed..."
+          
+          if az appservice plan show --name ${{ env.AZURE_APP_SERVICE_PLAN }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "✅ App Service Plan already exists"
+          else
+            echo "Creating App Service Plan..."
+            az appservice plan create \
+              --name ${{ env.AZURE_APP_SERVICE_PLAN }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }} \
+              --sku B1 \
+              --is-linux
+            echo "✅ App Service Plan created"
+          fi
+
+      - name: Create Web App
+        run: |
+          echo "🏗️ Creating Web App..."
+          
+          az webapp create \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --plan ${{ env.AZURE_APP_SERVICE_PLAN }} \
+            --runtime "PYTHON:${{ env.PYTHON_VERSION }}"
+          
+          echo "✅ Web App created"
+
+      # ========================================
+      # STEP 3: GENERATE AND PERSIST SECRETS
+      # ========================================
+      - name: Generate HR_API_KEY (if missing)
+        id: generate_secrets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔐 Checking if HR_API_KEY exists in GitHub secrets..."
+          
+          # Check if secret already exists in GitHub
+          if gh secret list | grep -q "HR_API_KEY"; then
+            echo "✅ HR_API_KEY already exists in GitHub secrets"
+            # We'll retrieve it from Azure in the next step
+          else
+            echo "Generating new HR_API_KEY..."
+            HR_API_KEY=$(openssl rand -hex 32)
+            echo "hr_api_key=$HR_API_KEY" >> $GITHUB_OUTPUT
+            
+            # Store in GitHub secrets
+            echo "Storing HR_API_KEY in GitHub secrets..."
+            echo "$HR_API_KEY" | gh secret set HR_API_KEY --repo ${{ github.repository }}
+            echo "✅ HR_API_KEY stored in GitHub secrets"
+          fi
+
+      - name: Get or set HR_API_KEY in Azure
+        id: sync_hr_key
+        run: |
+          echo "🔐 Syncing HR_API_KEY to Azure..."
+          
+          # Try to get existing key from Azure
+          EXISTING_KEY=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='HR_API_KEY'].value" -o tsv 2>/dev/null || echo "")
+          
+          if [ -n "$EXISTING_KEY" ]; then
+            echo "✅ HR_API_KEY already exists in Azure"
+          elif [ -n "${{ steps.generate_secrets.outputs.hr_api_key }}" ]; then
+            echo "Setting new HR_API_KEY in Azure..."
+            az webapp config appsettings set \
+              --name ${{ env.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --settings HR_API_KEY="${{ steps.generate_secrets.outputs.hr_api_key }}"
+            echo "✅ HR_API_KEY set in Azure"
+          else
+            echo "❌ ERROR: No HR_API_KEY available"
+            exit 1
+          fi
+
+      - name: Get publish profile
+        id: publish_profile
+        run: |
+          echo "📥 Getting publish profile..."
+          
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --xml)
+          
+          # Store in GitHub secrets
+          echo "$PUBLISH_PROFILE" | gh secret set AZURE_BACKEND_PUBLISH_PROFILE --repo ${{ github.repository }}
+          
+          echo "✅ Publish profile stored in GitHub secrets"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ========================================
+      # STEP 4: CONFIGURE WEB APP
+      # ========================================
+      - name: Configure Web App settings
+        run: |
+          echo "⚙️ Configuring Web App settings..."
+          
+          # Get frontend URL (if available)
+          FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL="https://hrportal-frontend.azurewebsites.net"
+            echo "⚠️ FRONTEND_URL not set, using default: $FRONTEND_URL"
+          fi
+          
+          # Configure app settings
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              DEBUG="False" \
+              CORS_ORIGINS="$FRONTEND_URL,https://*.azurestaticapps.net" \
+              DATABASE_URL="sqlite:///./hr_portal.db" \
+              CONFIG_VERSION="${{ env.CONFIG_VERSION }}"
+          
+          # Set startup command
+          az webapp config set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --startup-file "startup.sh"
+          
+          # Configure SCM build
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
+              ENABLE_ORYX_BUILD="true"
+          
+          # Enable HTTPS only
+          az webapp update \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --https-only true
+          
+          echo "✅ Web App configured"
+
+      - name: Configure CORS
+        run: |
+          echo "🌐 Configuring CORS..."
+          
+          FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL="https://hrportal-frontend.azurewebsites.net"
+          fi
+          
+          az webapp cors add \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "$FRONTEND_URL" "https://*.azurestaticapps.net"
+          
+          echo "✅ CORS configured"
+
+      # ========================================
+      # STEP 5: DEPLOY BACKEND CODE
+      # ========================================
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify app runs
+        working-directory: backend
+        run: python -c "from main import app; print('✅ App imports successfully')"
+
+      - name: Create deployment package
+        run: |
+          cd backend
+          zip -r ../deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db" -x "tests/*"
+          cd ..
+          ls -lh deploy.zip
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
+          package: deploy.zip
+
+      # ========================================
+      # STEP 6: VERIFY HEALTH
+      # ========================================
+      - name: Wait for deployment to complete
+        run: |
+          echo "⏳ Waiting for deployment to stabilize..."
+          # Azure App Service needs time to:
+          # - Extract and build the deployment package
+          # - Run pip install for dependencies
+          # - Execute startup.sh
+          # - Start Gunicorn with Uvicorn workers
+          sleep 60
+
+      - name: Health check with retries
+        run: |
+          echo "🏥 Running health check..."
+          
+          MAX_ATTEMPTS=10
+          RETRY_DELAY=15
+          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i/$MAX_ATTEMPTS..."
+            
+            if curl -sf "$WEBAPP_URL/health" -o /tmp/health_response.json; then
+              echo "✅ Health check passed"
+              cat /tmp/health_response.json
+              exit 0
+            fi
+            
+            if [ $i -lt $MAX_ATTEMPTS ]; then
+              echo "Health check failed, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+          echo "Checking application logs..."
+          az webapp log tail --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} || true
+          exit 1
+
+      # ========================================
+      # STEP 7: LOCK CONFIGURATION
+      # ========================================
+      - name: Lock configuration version
+        run: |
+          echo "🔒 Locking configuration version..."
+          
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              CONFIG_VERSION="${{ env.CONFIG_VERSION }}" \
+              BOOTSTRAP_COMPLETED="true" \
+              BOOTSTRAP_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          
+          echo "✅ Configuration locked with version ${{ env.CONFIG_VERSION }}"
+
+      - name: Bootstrap summary
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ BOOTSTRAP COMPLETED SUCCESSFULLY"
+          echo "=========================================="
+          echo ""
+          echo "Backend URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "Health endpoint: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo "API docs: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/docs"
+          echo ""
+          echo "Next steps:"
+          echo "1. Test the backend endpoints"
+          echo "2. Use 'backend-deploy.yml' for future deployments"
+          echo "3. Use 'backend-repair.yml' for autonomous repairs"
+          echo ""

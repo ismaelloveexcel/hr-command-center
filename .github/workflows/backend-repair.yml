@@ -1,235 +1,445 @@
-name: Auto-Fix + Repair Backend Deployment
+name: Backend Repair (Autonomous Self-Healing)
 
+# This workflow performs autonomous self-healing and repair
+# Detects and fixes infrastructure, configuration, and health issues
 on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch:
     inputs:
       repair_mode:
+        description: 'Force repair mode (recreate if needed)'
+        required: false
         type: boolean
-        default: true
-  schedule:
-    - cron: "0 */6 * * *"
+        default: false
+
+env:
+  AZURE_RESOURCE_GROUP: baynunah-hr-portal-rg
+  AZURE_LOCATION: uaenorth
+  AZURE_APP_SERVICE_PLAN: hrportal-plan-be
+  AZURE_WEBAPP_NAME: hrportal-backend
+  PYTHON_VERSION: '3.11'
+  CONFIG_VERSION: '1.0.0'
 
 permissions:
   id-token: write
   contents: read
-  actions: write
-
-concurrency:
-  group: backend-repair
-  cancel-in-progress: true
 
 jobs:
-  repair:
+  diagnose:
+    name: Diagnose Backend State
     runs-on: ubuntu-latest
+    outputs:
+      state: ${{ steps.detect_state.outputs.state }}
+      needs_deployment: ${{ steps.detect_state.outputs.needs_deployment }}
+      needs_config_fix: ${{ steps.detect_state.outputs.needs_config_fix }}
+      needs_secret_sync: ${{ steps.detect_state.outputs.needs_secret_sync }}
     
-    env:
-      RESOURCE_GROUP: baynunah-hr-portal-rg
-      LOCATION: eastus
-      APP_SERVICE_PLAN: baynunah-plan
-      BACKEND_APP_NAME: baynunah-hr-api
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # 1) Azure login (OIDC)
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: Azure OIDC Login
+        uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # 2) Detect backend app automatically
-      - name: Detect backend app
-        id: detect
+      - name: Detect backend state
+        id: detect_state
         run: |
-          APP=$(az webapp list --query "[?contains(name,'backend')].name|[0]" -o tsv)
-          if [ -z "$APP" ]; then
-            echo "app=REPAIR_CREATE" >> $GITHUB_OUTPUT
+          echo "🔍 Diagnosing backend state..."
+          
+          # Check if web app exists
+          if ! az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "state=missing" >> $GITHUB_OUTPUT
+            echo "needs_deployment=true" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=true" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Backend is MISSING"
+            exit 0
+          fi
+          
+          echo "✅ Backend exists"
+          
+          # Check configuration
+          CONFIG_OK=true
+          
+          # Check startup command
+          STARTUP_CMD=$(az webapp config show \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "appCommandLine" -o tsv)
+          
+          if [ "$STARTUP_CMD" != "startup.sh" ]; then
+            echo "⚠️ Startup command misconfigured: '$STARTUP_CMD'"
+            CONFIG_OK=false
+          fi
+          
+          # Check HR_API_KEY
+          HR_KEY=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='HR_API_KEY'].value" -o tsv)
+          
+          SECRET_OK=true
+          if [ -z "$HR_KEY" ]; then
+            echo "⚠️ HR_API_KEY is missing"
+            SECRET_OK=false
+          fi
+          
+          # Check health endpoint
+          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          HEALTH_OK=false
+          
+          for i in 1 2 3; do
+            if curl -sf "$WEBAPP_URL/health" > /dev/null 2>&1; then
+              HEALTH_OK=true
+              break
+            fi
+            sleep 5
+          done
+          
+          # Determine state
+          if [ "$HEALTH_OK" = true ] && [ "$CONFIG_OK" = true ] && [ "$SECRET_OK" = true ]; then
+            echo "state=healthy" >> $GITHUB_OUTPUT
+            echo "needs_deployment=false" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=false" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=false" >> $GITHUB_OUTPUT
+            echo "✅ Backend is HEALTHY"
+          elif [ "$HEALTH_OK" = false ]; then
+            echo "state=unhealthy" >> $GITHUB_OUTPUT
+            echo "needs_deployment=true" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=$( [ "$CONFIG_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=$( [ "$SECRET_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "⚠️ Backend is UNHEALTHY"
           else
-            echo "app=$APP" >> $GITHUB_OUTPUT
+            echo "state=misconfigured" >> $GITHUB_OUTPUT
+            echo "needs_deployment=false" >> $GITHUB_OUTPUT
+            echo "needs_config_fix=$( [ "$CONFIG_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "needs_secret_sync=$( [ "$SECRET_OK" = false ] && echo 'true' || echo 'false' )" >> $GITHUB_OUTPUT
+            echo "⚠️ Backend is MISCONFIGURED"
           fi
 
-      # 3) If missing → RE-CREATE backend app
-      - name: Create backend if missing
-        if: steps.detect.outputs.app == 'REPAIR_CREATE' && (github.event.inputs.repair_mode == true || github.event_name == 'schedule')
-        id: recreate
+  repair:
+    name: Repair Backend
+    runs-on: ubuntu-latest
+    needs: diagnose
+    if: needs.diagnose.outputs.state != 'healthy' || github.event.inputs.repair_mode == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ========================================
+      # HANDLE MISSING BACKEND
+      # ========================================
+      - name: Recreate infrastructure (if missing)
+        if: needs.diagnose.outputs.state == 'missing' || github.event.inputs.repair_mode == 'true'
         run: |
-          set -euo pipefail
-          APP_NAME="${{ env.BACKEND_APP_NAME }}"
-          RG="${{ env.RESOURCE_GROUP }}"
-          PLAN="${{ env.APP_SERVICE_PLAN }}"
-          LOCATION="${{ env.LOCATION }}"
+          echo "🏗️ Recreating infrastructure..."
           
-          # Ensure resource group exists (idempotent)
-          if ! az group show -n "$RG" >/dev/null 2>&1; then
-            echo "Creating resource group $RG..."
-            az group create -n "$RG" -l "$LOCATION" --only-show-errors
-          else
-            echo "Resource group $RG already exists"
+          # Check and create resource group
+          if ! az group show --name ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "Creating resource group..."
+            az group create \
+              --name ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }}
           fi
           
-          # Ensure app service plan exists (idempotent)
-          if ! az appservice plan show -n "$PLAN" -g "$RG" >/dev/null 2>&1; then
-            echo "Creating app service plan $PLAN..."
-            az appservice plan create -n "$PLAN" -g "$RG" --sku B1 --is-linux --only-show-errors
-          else
-            echo "App service plan $PLAN already exists"
+          # Check and create app service plan
+          if ! az appservice plan show --name ${{ env.AZURE_APP_SERVICE_PLAN }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "Creating App Service Plan..."
+            az appservice plan create \
+              --name ${{ env.AZURE_APP_SERVICE_PLAN }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }} \
+              --sku B1 \
+              --is-linux
           fi
           
-          # Create web app
-          echo "Creating web app $APP_NAME..."
-          az webapp create -n "$APP_NAME" -g "$RG" --plan "$PLAN" --runtime "python|3.11"
-          echo "app=$APP_NAME" >> $GITHUB_OUTPUT
-          echo "created=true" >> $GITHUB_OUTPUT
-
-      # 4) Ensure required config (startup, CORS, DB, HR key)
-      - name: Apply backend repair settings
-        id: config
-        run: |
-          set -euo pipefail
-          APP="${{ steps.detect.outputs.app }}"
-          CREATED="${{ steps.recreate.outputs.created }}"
-          if [ "$APP" = "REPAIR_CREATE" ]; then
-            APP="${{ steps.recreate.outputs.app }}"
+          # Check and create web app
+          if ! az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "Creating Web App..."
+            az webapp create \
+              --name ${{ env.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --plan ${{ env.AZURE_APP_SERVICE_PLAN }} \
+              --runtime "PYTHON:${{ env.PYTHON_VERSION }}"
           fi
-          RG="${{ env.RESOURCE_GROUP }}"
           
-          echo "Configuring startup command..."
-          az webapp config set -n "$APP" -g "$RG" --startup-file "bash startup.sh"
-          
-          # Only generate new API key if app was just created
-          if [ "$CREATED" = "true" ]; then
-            echo "Generating new API key for newly created app..."
-            HR_KEY=$(openssl rand -hex 24)
-            az webapp config appsettings set -n "$APP" -g "$RG" --settings \
-              DATABASE_URL="sqlite:///./hr_portal.db" \
-              HR_API_KEY="$HR_KEY" \
-              CORS_ORIGINS="${{ secrets.FRONTEND_URL || 'https://baynunah-hr-portal.azurewebsites.net' }}" \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=true
-          else
-            echo "Updating configuration for existing app (preserving API key)..."
-            az webapp config appsettings set -n "$APP" -g "$RG" --settings \
-              DATABASE_URL="sqlite:///./hr_portal.db" \
-              CORS_ORIGINS="${{ secrets.FRONTEND_URL || 'https://baynunah-hr-portal.azurewebsites.net' }}" \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=true
-          fi
+          echo "✅ Infrastructure ready"
 
-          echo "app=$APP" >> $GITHUB_OUTPUT
-          echo "created=$CREATED" >> $GITHUB_OUTPUT
-
-      # 5) Regenerate publish profile if app was created
-      - name: Regenerate publish profile
-        if: steps.config.outputs.created == 'true'
-        id: profile
-        run: |
-          set -euo pipefail
-          APP="${{ steps.config.outputs.app }}"
-          RG="${{ env.RESOURCE_GROUP }}"
-          
-          echo "Regenerating publish profile for $APP..."
-          az webapp deployment list-publishing-profiles \
-            --name "$APP" --resource-group "$RG" \
-            --xml > profile.xml
-          
-          # Base64 encode for safe transport (Linux-specific -w 0 flag)
-          PROFILE_B64=$(base64 -w 0 profile.xml)
-          echo "profile=$PROFILE_B64" >> $GITHUB_OUTPUT
-
-      # 6) Update GitHub secrets if app was created
-      - name: Update GitHub secrets
-        if: steps.config.outputs.created == 'true'
+      # ========================================
+      # SYNC SECRETS (NO ROTATION)
+      # ========================================
+      - name: Sync secrets (if needed)
+        if: needs.diagnose.outputs.needs_secret_sync == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          PROFILE_B64="${{ steps.profile.outputs.profile }}"
-          PROFILE_XML="$(echo "$PROFILE_B64" | base64 -d)"
+          echo "🔐 Syncing secrets..."
           
-          echo "Updating GitHub secrets..."
-          gh secret set AZURE_BACKEND_PUBLISH_PROFILE --body "$PROFILE_XML"
-          gh secret set AZURE_BACKEND_APP_NAME --body "${{ steps.config.outputs.app }}"
-
-      # 7) Decide whether deployment is needed
-      - name: Decide whether to trigger backend deploy
-        id: decide
-        run: |
-          APP="${{ steps.config.outputs.app }}"
-          URL="https://$APP.azurewebsites.net/health"
-          CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
-
-          SHOULD_DEPLOY="false"
-          # Always allow deployment for non-scheduled runs (e.g. manual repair)
-          if [ "${{ github.event_name }}" != "schedule" ]; then
-            SHOULD_DEPLOY="true"
-            echo "Manual run - will trigger deployment"
+          # Check if HR_API_KEY exists in Azure
+          AZURE_HR_KEY=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='HR_API_KEY'].value" -o tsv 2>/dev/null || echo "")
+          
+          # Check if HR_API_KEY exists in GitHub
+          GITHUB_HAS_KEY=false
+          if gh secret list | grep -q "HR_API_KEY"; then
+            GITHUB_HAS_KEY=true
           fi
-
-          # For scheduled runs, only deploy if health check fails or app was just created
-          if [ "${{ steps.config.outputs.created }}" = "true" ]; then
-            SHOULD_DEPLOY="true"
-            echo "App was just created - will trigger deployment"
-          elif [ "$CODE" != "200" ]; then
-            SHOULD_DEPLOY="true"
-            echo "Health check failed (HTTP $CODE) - will trigger deployment"
+          
+          # Decide sync direction
+          if [ -n "$AZURE_HR_KEY" ] && [ "$GITHUB_HAS_KEY" = false ]; then
+            echo "Syncing HR_API_KEY from Azure to GitHub..."
+            echo "$AZURE_HR_KEY" | gh secret set HR_API_KEY --repo ${{ github.repository }}
+            echo "✅ Synced Azure → GitHub"
+          elif [ -z "$AZURE_HR_KEY" ] && [ "$GITHUB_HAS_KEY" = true ]; then
+            echo "❌ Cannot read GitHub secret to sync to Azure"
+            echo "Generating new HR_API_KEY..."
+            NEW_KEY=$(openssl rand -hex 32)
+            
+            az webapp config appsettings set \
+              --name ${{ env.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --settings HR_API_KEY="$NEW_KEY"
+            
+            echo "$NEW_KEY" | gh secret set HR_API_KEY --repo ${{ github.repository }}
+            echo "✅ Generated and synced new HR_API_KEY"
+          elif [ -z "$AZURE_HR_KEY" ] && [ "$GITHUB_HAS_KEY" = false ]; then
+            echo "Generating new HR_API_KEY (missing in both)..."
+            NEW_KEY=$(openssl rand -hex 32)
+            
+            az webapp config appsettings set \
+              --name ${{ env.AZURE_WEBAPP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --settings HR_API_KEY="$NEW_KEY"
+            
+            echo "$NEW_KEY" | gh secret set HR_API_KEY --repo ${{ github.repository }}
+            echo "✅ Generated and synced new HR_API_KEY"
+          else
+            echo "✅ HR_API_KEY exists in both locations"
           fi
+          
+          # Sync publish profile
+          echo "Syncing publish profile..."
+          PUBLISH_PROFILE=$(az webapp deployment list-publishing-profiles \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --xml)
+          
+          echo "$PUBLISH_PROFILE" | gh secret set AZURE_BACKEND_PUBLISH_PROFILE --repo ${{ github.repository }}
+          echo "✅ Publish profile synced"
 
-          echo "should_deploy=$SHOULD_DEPLOY" >> "$GITHUB_OUTPUT"
-
-      # 8) Trigger deployment automatically (conditional)
-      - name: Trigger backend deploy
-        if: steps.decide.outputs.should_deploy == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # ========================================
+      # FIX CONFIGURATION DRIFT
+      # ========================================
+      - name: Fix configuration (if needed)
+        if: needs.diagnose.outputs.needs_config_fix == 'true' || needs.diagnose.outputs.state == 'missing'
         run: |
-          set -euo pipefail
+          echo "⚙️ Fixing configuration..."
+          
+          # Get frontend URL
+          FRONTEND_URL="${{ secrets.FRONTEND_URL }}"
+          if [ -z "$FRONTEND_URL" ]; then
+            FRONTEND_URL="https://hrportal-frontend.azurewebsites.net"
+          fi
+          
+          # Fix app settings
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              DEBUG="False" \
+              CORS_ORIGINS="$FRONTEND_URL,https://*.azurestaticapps.net" \
+              DATABASE_URL="sqlite:///./hr_portal.db" \
+              CONFIG_VERSION="${{ env.CONFIG_VERSION }}"
+          
+          # Fix startup command
+          az webapp config set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --startup-file "startup.sh"
+          
+          # Fix SCM build settings
+          az webapp config appsettings set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
+              ENABLE_ORYX_BUILD="true"
+          
+          # Fix HTTPS
+          az webapp update \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --https-only true
+          
+          # Fix CORS
+          az webapp cors remove \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "*" || true
+          
+          az webapp cors add \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --allowed-origins "$FRONTEND_URL" "https://*.azurestaticapps.net"
+          
+          echo "✅ Configuration fixed"
 
-          echo "Triggering backend-deploy workflow..."
-          gh workflow run backend-deploy.yml --ref "$GITHUB_REF_NAME"
-
-          echo "Waiting for backend-deploy workflow run to start..."
-          sleep 10
-
+      # ========================================
+      # REDEPLOY IF NEEDED
+      # ========================================
+      - name: Trigger deployment (if needed)
+        if: needs.diagnose.outputs.needs_deployment == 'true'
+        run: |
+          echo "🚀 Triggering deployment..."
+          
+          # Trigger backend-deploy workflow
+          gh workflow run backend-deploy.yml \
+            --repo ${{ github.repository }}
+          
+          echo "✅ Deployment triggered"
+          echo "Waiting for deployment workflow to start..."
+          # Wait for GitHub Actions to register the workflow run
+          sleep 15
+          
+          # Get the workflow run ID
           RUN_ID=$(gh run list \
             --workflow=backend-deploy.yml \
-            --branch "$GITHUB_REF_NAME" \
-            --event workflow_dispatch \
-            --json databaseId,createdAt \
-            -q 'sort_by(.createdAt) | last.databaseId // empty')
-
-          if [ -z "$RUN_ID" ]; then
-            echo "Failed to find a triggered backend-deploy workflow run."
-            exit 1
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+          
+          if [ -n "$RUN_ID" ]; then
+            echo "Monitoring deployment workflow run $RUN_ID..."
+            gh run watch "$RUN_ID" --exit-status || echo "⚠️ Deployment workflow failed, continuing to health check"
+          else
+            echo "⚠️ Could not find workflow run, waiting for deployment to complete..."
+            # Fallback: typical deployment time (build + package + deploy + start)
+            # Allows time for: pip install (~30s), zip creation (~5s), 
+            # Azure deployment (~45s), app startup (~30s)
+            sleep 120
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-          echo "Monitoring backend-deploy workflow run ID $RUN_ID..."
-          gh run watch "$RUN_ID" --exit-status
-
-      # 9) Health check with retries
-      - name: Health Check
-        if: steps.decide.outputs.should_deploy == 'true'
+      # ========================================
+      # VERIFY REPAIR
+      # ========================================
+      - name: Wait for changes to apply
         run: |
-          APP="${{ steps.config.outputs.app }}"
-          URL="https://$APP.azurewebsites.net/health"
-          MAX_ATTEMPTS=10
-          SLEEP_SECONDS=30
+          echo "⏳ Waiting for changes to apply..."
+          # Allow time for:
+          # - Configuration changes to propagate
+          # - App Service to restart (if needed)
+          # - Health endpoint to become available
+          sleep 60
 
-          attempt=1
-          while [ "$attempt" -le "$MAX_ATTEMPTS" ]; do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
-            if [ "$CODE" = "200" ]; then
-              echo "✅ Repair mode: backend healthy (HTTP 200 on attempt $attempt)"
+      - name: Verify health after repair
+        id: verify
+        run: |
+          echo "🏥 Verifying health after repair..."
+          
+          MAX_ATTEMPTS=10
+          RETRY_DELAY=15
+          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i/$MAX_ATTEMPTS..."
+            
+            if curl -sf "$WEBAPP_URL/health" -o /tmp/health_response.json; then
+              echo "✅ Health check passed"
+              cat /tmp/health_response.json
+              echo "repair_successful=true" >> $GITHUB_OUTPUT
               exit 0
             fi
-
-            echo "⚠️ Repair mode: health check attempt $attempt/$MAX_ATTEMPTS failed with HTTP $CODE"
-            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
-              echo "Waiting $SLEEP_SECONDS seconds before retrying..."
-              sleep "$SLEEP_SECONDS"
+            
+            if [ $i -lt $MAX_ATTEMPTS ]; then
+              echo "Health check failed, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
             fi
-
-            attempt=$((attempt + 1))
           done
+          
+          echo "repair_successful=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Health check still failing after repair"
 
-          echo "❌ Repair mode: health check failed after $MAX_ATTEMPTS attempts"
+      - name: Diagnose failure
+        if: steps.verify.outputs.repair_successful != 'true'
+        run: |
+          echo "🔍 Diagnosing failure..."
+          
+          echo "=== Application Logs ==="
+          az webapp log tail \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --only-show-errors || true
+          
+          echo ""
+          echo "=== Configuration ==="
+          az webapp config show \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} || true
+          
+          echo ""
+          echo "=== App Settings ==="
+          az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[].{name:name, value:value}" -o table || true
+          
+          echo ""
+          echo "❌ Repair failed - manual intervention may be required"
           exit 1
+
+      - name: Repair summary
+        if: steps.verify.outputs.repair_successful == 'true'
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ REPAIR COMPLETED SUCCESSFULLY"
+          echo "=========================================="
+          echo ""
+          echo "Backend state: ${{ needs.diagnose.outputs.state }} → healthy"
+          echo "Backend URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "Health endpoint: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo ""
+
+  report:
+    name: Report Status
+    runs-on: ubuntu-latest
+    needs: [diagnose, repair]
+    if: always()
+    
+    steps:
+      - name: Report repair status
+        run: |
+          echo "=========================================="
+          echo "REPAIR WORKFLOW SUMMARY"
+          echo "=========================================="
+          echo ""
+          echo "Initial state: ${{ needs.diagnose.outputs.state }}"
+          echo "Repair needed: ${{ needs.diagnose.outputs.state != 'healthy' }}"
+          echo "Repair job status: ${{ needs.repair.result }}"
+          echo ""
+          
+          if [ "${{ needs.diagnose.outputs.state }}" = "healthy" ]; then
+            echo "✅ Backend is healthy - no action needed"
+          elif [ "${{ needs.repair.result }}" = "success" ]; then
+            echo "✅ Repair completed successfully"
+          else
+            echo "⚠️ Repair may have issues - check logs"
+          fi

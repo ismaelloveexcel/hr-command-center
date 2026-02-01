@@ -1,23 +1,75 @@
-name: Deploy Backend to Azure App Service
+name: Backend Deploy (Regular Deployments)
 
+# This workflow handles regular code deployments ONLY
+# Does NOT create infrastructure or rotate secrets
 on:
   push:
     branches: [main]
     paths: ['backend/**', '.github/workflows/backend-deploy.yml']
   workflow_dispatch:
+  workflow_call:
 
 env:
+  AZURE_RESOURCE_GROUP: baynunah-hr-portal-rg
+  AZURE_WEBAPP_NAME: hrportal-backend
   PYTHON_VERSION: '3.11'
-  AZURE_WEBAPP_NAME: baynunah-hr-api
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     
     steps:
+      # ========================================
+      # STEP 1: VALIDATION
+      # ========================================
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate backend exists
+        run: |
+          echo "🔍 Validating backend exists..."
+          
+          if ! az webapp show --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "❌ ERROR: Backend '${{ env.AZURE_WEBAPP_NAME }}' does not exist!"
+            echo ""
+            echo "Run 'backend-bootstrap.yml' workflow first to create the infrastructure."
+            exit 1
+          fi
+          
+          echo "✅ Backend exists"
+
+      - name: Validate secrets exist
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          # Check HR_API_KEY exists in Azure
+          HR_KEY=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='HR_API_KEY'].value" -o tsv)
+          
+          if [ -z "$HR_KEY" ]; then
+            echo "❌ ERROR: HR_API_KEY not configured in Azure!"
+            echo "Run 'backend-repair.yml' workflow to fix configuration."
+            exit 1
+          fi
+          
+          echo "✅ All required secrets configured"
+
+      # ========================================
+      # STEP 2: BUILD AND DEPLOY
+      # ========================================
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -33,14 +85,21 @@ jobs:
 
       - name: Verify app runs
         working-directory: backend
-        run: python -c "from main import app; print('OK')"
+        run: |
+          # Basic import check - validates:
+          # - Python syntax is correct
+          # - All dependencies are installed
+          # - FastAPI app initializes without errors
+          # - Database models load correctly
+          # Full endpoint validation happens in health check after deployment
+          python -c "from main import app; print('✅ App imports successfully')"
 
       - name: Create deployment package
         run: |
           cd backend
           zip -r ../deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db" -x "tests/*"
           cd ..
-          ls -la deploy.zip
+          ls -lh deploy.zip
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -49,17 +108,49 @@ jobs:
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           package: deploy.zip
 
+      # ========================================
+      # STEP 3: HEALTH CHECK
+      # ========================================
+      - name: Wait for deployment to complete
+        run: |
+          echo "⏳ Waiting for deployment to stabilize..."
+          sleep 45
+
       - name: Health check
         run: |
-          echo "Waiting for deployment to stabilize..."
-          sleep 45
-          for i in 1 2 3 4 5; do
-            if curl -sf "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"; then
-              echo ""
-              echo "✓ Health check passed"
+          echo "🏥 Running health check..."
+          
+          MAX_ATTEMPTS=5
+          RETRY_DELAY=15
+          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $i/$MAX_ATTEMPTS..."
+            
+            if curl -sf "$WEBAPP_URL/health" -o /tmp/health_response.json; then
+              echo "✅ Health check passed"
+              cat /tmp/health_response.json
               exit 0
             fi
-            echo "Attempt $i: waiting..."
-            sleep 15
+            
+            if [ $i -lt $MAX_ATTEMPTS ]; then
+              echo "Health check failed, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
           done
-          echo "Health check pending - app may still be starting"
+          
+          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
+          echo "Run 'backend-repair.yml' workflow to diagnose and fix."
+          exit 1
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "✅ DEPLOYMENT COMPLETED SUCCESSFULLY"
+          echo "=========================================="
+          echo ""
+          echo "Backend URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          echo "Health endpoint: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health"
+          echo ""

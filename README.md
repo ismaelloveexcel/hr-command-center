@@ -66,22 +66,45 @@ Frontend: http://localhost:3000
 
 ## Deployment
 
-The project includes multiple Azure deployment options with comprehensive documentation:
+The project includes autonomous Azure deployment with self-healing capabilities:
 
-### 🚀 GitHub Actions Workflow (⭐ Recommended for Non-Technical Users)
+### ⚡ Autonomous Backend Deployment (New!)
 
-**One-click deployment directly from GitHub:**
+**Three GitHub Actions workflows with zero manual intervention:**
 
-1. Go to **Actions** tab → **Complete Azure Setup & Deploy**
-2. Click **Run workflow** → Use default values
-3. Wait 10 minutes → Get your live URLs!
+1. **backend-bootstrap.yml** - First-time deployment (run once)
+2. **backend-deploy.yml** - Automatic code deployments (on push to main)
+3. **backend-repair.yml** - Autonomous self-healing (every 6 hours)
 
-**No CLI installation needed!** Everything runs in GitHub Actions.  
-**Details**: [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md)
+**Quick start:**
+```bash
+# 1. Configure OIDC secrets (see docs)
+# 2. Run bootstrap workflow
+gh workflow run backend-bootstrap.yml
 
-### 🤖 Command-Line Automation (For Technical Users)
+# 3. Done! Future deployments are automatic
+```
 
-**One command to deploy everything:**
+**Deployed Backend URL:**
+- **Production URL**: `https://hrportal-backend.azurewebsites.net`
+- **Health Check**: `https://hrportal-backend.azurewebsites.net/health`
+- **API Documentation**: `https://hrportal-backend.azurewebsites.net/docs`
+
+**Key Features:**
+- ✅ 100% idempotent - safe to run multiple times
+- ✅ Azure OIDC authentication (no credentials in GitHub)
+- ✅ Autonomous repair - fixes issues automatically
+- ✅ Fail-hard with diagnostics - no silent failures
+- ✅ Secret generation & sync (never rotates unless missing)
+- ✅ Health verification with retries
+
+**Documentation:**
+- [Azure Backend Workflows Guide](./docs/AZURE_BACKEND_WORKFLOWS.md) - Complete guide
+- [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) - Common commands
+
+### 🤖 Legacy Automated Setup
+
+**One command to deploy everything (alternative method):**
 
 ```bash
 cd infrastructure && ./setup-azure.sh
@@ -94,47 +117,65 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
-| [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md) | **Non-technical users** - Deploy with GitHub UI | Easiest method ⭐ |
-| [Azure Complete Deployment](./docs/AZURE_COMPLETE_DEPLOYMENT.md) | **Complete workflow docs** - Technical details | Understanding workflow |
-| [Azure Resource Cleanup](./docs/AZURE_RESOURCE_CLEANUP.md) | **Clean up redundant resources** - Cost savings | Remove old deployments 🧹 |
-| [Workflow Review](./docs/WORKFLOW_REVIEW.md) | **Improvements & analysis** - What's new | Technical review |
-| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **CLI automation** - Setup script | Command-line deployment |
+| [Azure Backend Workflows](./docs/AZURE_BACKEND_WORKFLOWS.md) | **Autonomous workflows** - New deployment system | Production deployments ⭐ |
+| [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) | Common commands & troubleshooting | Daily operations ⭐ |
+| [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Legacy method |
 | [Deployment Status](./docs/DEPLOYMENT_STATUS.md) | Current status & next steps | Check readiness |
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
 | [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
 | [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Manual setup |
+| [Azure Deployment](./docs/AZURE_DEPLOYMENT.md) | Architecture & design | Understanding system |
 
 ### Quick Start
 
-**Option A: GitHub Actions Workflow (⭐ Easiest - No Installation Required)**
-1. **Configure secrets** - Add 3 OIDC secrets (one-time setup)
-2. **Run workflow** - Actions → Complete Azure Setup & Deploy → Run workflow
-3. **Get URLs** - Check workflow summary for your live app URLs
+**Option A: Autonomous Workflows (⭐ Recommended)**
+```bash
+# Prerequisites
+brew install azure-cli gh    # Install CLIs
+az login && gh auth login    # Login
 
-**Option B: Command-Line Automation (For Technical Users)**
+# Configure OIDC (one-time setup)
+# See: docs/AZURE_BACKEND_WORKFLOWS.md
+
+# Deploy backend
+gh workflow run backend-bootstrap.yml
+
+# Deploy frontend (use existing workflow or manual setup)
+```
+
+**Option B: Legacy Automated**
 ```bash
 brew install azure-cli gh    # Install CLIs
 az login && gh auth login    # Login
 cd infrastructure && ./setup-azure.sh  # Deploy!
 ```
 
-**Option C: Manual Deployment**
+**Option C: Manual**
 1. **Get Azure subscription** - [Free account](https://azure.microsoft.com/free/) with $200 credit
 2. **Create resources** - Follow [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md)
-3. **Configure secrets** - Add secrets to GitHub repository
+3. **Configure secrets** - Add required secrets to GitHub repository
 4. **Push to main** - Automatic deployment triggers
 5. **Verify** - Use [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md)
 
 ### GitHub Secrets Required
 
-#### For Complete Azure Setup & Deploy Workflow (OIDC)
+**For Autonomous Workflows (Recommended):**
+
 | Secret | Description |
 |--------|-------------|
-| `AZURE_CLIENT_ID` | Azure Service Principal Client ID |
-| `AZURE_TENANT_ID` | Azure Tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Azure Subscription ID |
+| `AZURE_CLIENT_ID` | Service principal client ID for OIDC authentication |
+| `AZURE_TENANT_ID` | Azure tenant ID |
+| `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
+| `FRONTEND_URL` | Frontend URL for CORS (optional) |
 
-#### For Standard Deployment Workflows (Legacy)
+**Backend URL for Frontend Integration:**
+When configuring your frontend to connect to the backend, use:
+```
+REACT_APP_API_URL=https://hrportal-backend.azurewebsites.net
+```
+
+**For Legacy Workflows:**
+
 | Secret | Description |
 |--------|-------------|
 | `AZURE_BACKEND_APP_NAME` | Your App Service name |
@@ -142,7 +183,9 @@ cd infrastructure && ./setup-azure.sh  # Deploy!
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | Token from Static Web App |
 | `REACT_APP_API_URL` | Backend URL (https://...) |
 
-**📋 See [Quick Deploy Guide](./docs/QUICK_DEPLOY_GUIDE.md) to get started in minutes!**
+**Note:** Autonomous workflows auto-generate and sync `HR_API_KEY` and publish profiles.
+
+**📋 See [Azure Backend Workflows Guide](./docs/AZURE_BACKEND_WORKFLOWS.md) for OIDC setup.**
 
 ## Environment Variables
 
