@@ -85,6 +85,11 @@ gh workflow run backend-bootstrap.yml
 # 3. Done! Future deployments are automatic
 ```
 
+**Deployed Backend URL:**
+- **Production URL**: `https://hrportal-backend.azurewebsites.net`
+- **Health Check**: `https://hrportal-backend.azurewebsites.net/health`
+- **API Documentation**: `https://hrportal-backend.azurewebsites.net/docs`
+
 **Key Features:**
 - ✅ 100% idempotent - safe to run multiple times
 - ✅ Azure OIDC authentication (no credentials in GitHub)
@@ -162,6 +167,12 @@ cd infrastructure && ./setup-azure.sh  # Deploy!
 | `AZURE_TENANT_ID` | Azure tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Azure subscription ID |
 | `FRONTEND_URL` | Frontend URL for CORS (optional) |
+
+**Backend URL for Frontend Integration:**
+When configuring your frontend to connect to the backend, use:
+```
+REACT_APP_API_URL=https://hrportal-backend.azurewebsites.net
+```
 
 **For Legacy Workflows:**
 
