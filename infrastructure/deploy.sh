@@ -9,7 +9,7 @@ set -e
 # Configuration
 BACKEND_NAME="baynunah-hr-api"
 FRONTEND_NAME="baynunah-hr-portal"
-RG="baynunah-hr-rg"
+RG="baynunah-hr-portal-rg"
 LOCATION="centralus"
 REPO="ismaelloveexcel/hr-command-center"
 
