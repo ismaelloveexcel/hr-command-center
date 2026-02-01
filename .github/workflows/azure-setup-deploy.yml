@@ -121,12 +121,12 @@ jobs:
           if ! [[ "$KEYVAULT_NAME" =~ ^[a-z] ]]; then
             KEYVAULT_NAME="kv${KEYVAULT_NAME}"
           fi
-          # Enforce max length (24 characters)
-          KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
-          # Ensure minimum length requirement (3 characters)
+          # Ensure minimum length requirement (3 characters) before truncation
           if [ ${#KEYVAULT_NAME} -lt 3 ]; then
-            KEYVAULT_NAME="kvault${UNIQUE_SUFFIX}"
+            KEYVAULT_NAME="kv${UNIQUE_SUFFIX}"
           fi
+          # Enforce max length (24 characters) - do this last to handle all cases
+          KEYVAULT_NAME=$(echo "$KEYVAULT_NAME" | cut -c1-24)
           
           echo "resource_group=${{ github.event.inputs.resource_group }}" >> $GITHUB_OUTPUT
           echo "keyvault_name=${KEYVAULT_NAME}" >> $GITHUB_OUTPUT
