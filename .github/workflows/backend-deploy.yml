@@ -34,15 +34,32 @@ jobs:
         working-directory: backend
         run: python -c "from main import app; print('OK')"
 
+      - name: Create deployment package
+        run: |
+          cd backend
+          zip -r ../backend.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db"
+          cd ..
+          ls -la backend.zip
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_BACKEND_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
-          package: ./backend
+          package: backend.zip
+          type: zip
 
       - name: Health check
         run: |
           echo "Waiting for deployment to stabilize..."
-          sleep 30
-          curl -sf "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.azurewebsites.net/health" && echo "✓ Health check passed" || echo "Health check pending"
+          sleep 45
+          for i in 1 2 3; do
+            if curl -sf "https://${{ secrets.AZURE_BACKEND_APP_NAME }}.azurewebsites.net/health"; then
+              echo ""
+              echo "✓ Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "Health check pending - app may still be starting"
