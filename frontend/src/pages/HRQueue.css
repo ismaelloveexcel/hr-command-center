@@ -90,6 +90,19 @@
   font-size: 0.95rem;
 }
 
+.gate-warning {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #9b2c2c;
+  font-weight: 600;
+}
+
+.gate-session {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #718096;
+}
+
 .gate-error {
   margin: 0;
   color: #c53030;
@@ -323,6 +336,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .status-indicator {
@@ -359,6 +373,20 @@
   background-repeat: no-repeat;
   background-position: right 10px center;
   transition: all 0.2s ease;
+}
+
+.status-text {
+  font-size: 13px;
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.status-select-label {
+  font-size: 12px;
+  color: #718096;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .status-select:focus {

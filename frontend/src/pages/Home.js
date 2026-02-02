@@ -6,7 +6,7 @@ function Home() {
     <main className="home-page">
       <h1>UAE HR Portal</h1>
       <p className="home-subtitle">
-        Submit and track your HR requests easily. Get updates on your request status in real-time.
+        Track your existing HR requests and stay updated on progress.
       </p>
 
       <div className="home-actions">

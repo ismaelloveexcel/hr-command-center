@@ -194,16 +194,18 @@ function HRQueue() {
   return (
     <main className="hr-queue">
       <div className="page-header">
-        <h1>HR Dashboard</h1>
-        <p className="subtitle">Manage and update employee request statuses</p>
+        <h1>HR Dashboard (staff only)</h1>
+        <p className="subtitle">Manage and update employee request statuses securely</p>
       </div>
 
       {!hasKey ? (
         <div className="hr-key-gate">
           <h2>Restricted Access</h2>
           <p className="gate-note">Enter the HR API key to unlock the dashboard.</p>
+          <p className="gate-warning">Do not enter this key on shared or public devices.</p>
+          <p className="gate-session">This key is stored for this browser session only.</p>
           {error && (
-            <p className="gate-error">{error}</p>
+            <p className="gate-error" role="alert" aria-live="polite">{error}</p>
           )}
           <form onSubmit={handleKeySubmit}>
             <label htmlFor="hr-api-key">HR API Key</label>
@@ -221,7 +223,7 @@ function HRQueue() {
       ) : (
         <>
           {error && (
-            <div className="error-message">
+            <div className="error-message" role="alert" aria-live="polite">
               <span className="error-icon">!</span>
               <p>{error}</p>
               <button onClick={fetchRequests} className="retry-btn">Retry</button>
@@ -245,7 +247,7 @@ function HRQueue() {
               )}
             </div>
             <button type="button" onClick={handleResetKey} className="reset-key-btn">
-              Reset HR API Key
+              Log out (clear key)
             </button>
           </div>
 
@@ -271,7 +273,14 @@ function HRQueue() {
                       <div className={`status-indicator ${request.status}`}>
                         <span className="status-dot">{getStatusIcon(request.status)}</span>
                       </div>
+                      <div className="status-text">
+                        Status: {request.status_label || request.status}
+                      </div>
+                      <label className="status-select-label" htmlFor={`status-${request.reference}`}>
+                        Update status
+                      </label>
                       <select
+                        id={`status-${request.reference}`}
                         value={request.status}
                         onChange={(e) => handleStatusChange(request.reference, e.target.value)}
                         disabled={updatingRef === request.reference}

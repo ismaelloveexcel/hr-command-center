@@ -85,8 +85,16 @@ function TrackRequest() {
         </button>
       </form>
 
+      <div className="helper-card">
+        <h2>Need help finding your reference?</h2>
+        <p>
+          Your reference number is shared in the confirmation email from HR. If you no longer have it,
+          contact your HR representative for assistance.
+        </p>
+      </div>
+
       {error && (
-        <div className="error-message">
+        <div className="error-message" role="alert" aria-live="polite">
           <span className="error-icon">!</span>
           <p>{error}</p>
         </div>
@@ -121,7 +129,9 @@ function TrackRequest() {
                 {getStatusIcon(tracking.current_status)}
               </span>
               <div>
-                <div className="status-label">{tracking.status_label}</div>
+                <div className="status-label">
+                  Status: <span className="status-text">{tracking.status_label}</span>
+                </div>
                 {tracking.next_steps && (
                   <div className="next-steps">{tracking.next_steps}</div>
                 )}
@@ -160,10 +170,6 @@ function TrackRequest() {
           </div>
 
           <div className="meta-info">
-            <div className="meta-item">
-              <span className="meta-label">Submitted by</span>
-              <span className="meta-value">{tracking.submitted_by}</span>
-            </div>
             <div className="meta-item">
               <span className="meta-label">Last updated</span>
               <span className="meta-value">{formatDate(tracking.last_updated)}</span>

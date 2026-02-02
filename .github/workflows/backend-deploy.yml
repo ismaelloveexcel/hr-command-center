@@ -18,9 +18,14 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: backend-deploy-main
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       # ========================================
@@ -28,6 +33,21 @@ jobs:
       # ========================================
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            echo "❌ Missing AZURE_CLIENT_ID secret."
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            echo "❌ Missing AZURE_TENANT_ID secret."
+            exit 1
+          fi
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "❌ Missing AZURE_SUBSCRIPTION_ID secret."
+            exit 1
+          fi
 
       - name: Azure OIDC Login
         uses: azure/login@v1
@@ -105,7 +125,6 @@ jobs:
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_BACKEND_PUBLISH_PROFILE }}
           package: deploy.zip
 
       # ========================================

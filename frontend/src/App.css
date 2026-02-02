@@ -79,6 +79,15 @@ nav ul a:hover {
   background: rgba(255,255,255,0.1);
 }
 
+nav ul a:focus-visible,
+.action-card:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(49, 130, 206, 0.5);
+  outline-offset: 2px;
+}
+
 /* Main content */
 main {
   max-width: 1200px;
