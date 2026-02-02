@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -58,6 +58,22 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
 # Include routers
 app.include_router(requests.router)
 app.include_router(hr.router)
+
+
+@app.middleware("http")
+async def enforce_request_size_limit(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            size = int(content_length)
+            if size > 1024 * 1024:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="Request body too large. Maximum size is 1MB."
+                )
+        except ValueError:
+            pass
+    return await call_next(request)
 
 
 @app.on_event("startup")

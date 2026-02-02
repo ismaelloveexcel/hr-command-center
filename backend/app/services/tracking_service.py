@@ -76,7 +76,6 @@ def get_request_tracking(db: Session, reference: str) -> RequestTrackingResponse
         title=request.title,
         description=request.description,
         current_status=status_value,
-        submitted_by=request.submitted_by,
         submitted_at=request.submitted_at,
         timeline=timeline,
         last_updated=request.updated_at,

@@ -27,7 +27,6 @@ class RequestTrackingResponse(BaseModel):
     title: str
     description: Optional[str] = None
     current_status: str
-    submitted_by: str
     submitted_at: datetime
     timeline: List[TimelineEvent] = Field(default_factory=list, description="Status change history")
     last_updated: datetime

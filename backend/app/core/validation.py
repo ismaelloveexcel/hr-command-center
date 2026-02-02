@@ -46,6 +46,8 @@ def sanitize_text(text: Optional[str], max_length: Optional[int] = None) -> Opti
     if text is None:
         return None
     
+    text = text.replace("\x00", "")
+
     # Remove any HTML tags
     sanitized = bleach.clean(text, tags=[], attributes={}, strip=True)
     
@@ -67,7 +69,10 @@ def validate_reference_format(reference: str) -> bool:
     Returns:
         True if reference is valid, False otherwise
     """
-    pattern = r'^REF-\d{4}-\d{3}$'
+    if not reference or not isinstance(reference, str):
+        return False
+
+    pattern = r'^REF-(19|20)\d{2}-\d{3}$'
     return bool(re.match(pattern, reference))
 
 
@@ -84,6 +89,9 @@ def validate_email(email: str) -> bool:
     Note: This is a basic validation. For production use, consider
     using pydantic.EmailStr or email-validator library for RFC-compliant validation.
     """
+    if not email or not isinstance(email, str):
+        return False
+
     # Basic email pattern - not exhaustive but catches obvious issues
     pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return bool(re.match(pattern, email))

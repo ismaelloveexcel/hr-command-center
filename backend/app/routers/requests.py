@@ -4,7 +4,8 @@ Request API endpoints.
 Unified request system for the UAE HR Portal.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.request import RequestCreate, RequestUpdate, RequestResponse
@@ -12,8 +13,10 @@ from app.schemas.tracking import RequestTrackingResponse
 from app.services import request_service, tracking_service
 from app.dependencies.security import require_hr_api_key
 from app.core.rate_limit import apply_rate_limit
+from app.core.validation import validate_reference_format, sanitize_text
 
 router = APIRouter(prefix="/requests", tags=["requests"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=RequestResponse, status_code=status.HTTP_201_CREATED)
@@ -35,17 +38,24 @@ def create_request(
     try:
         db_request = request_service.create_request(db, request_data)
         return db_request
+    except ValueError as e:
+        logger.info("Validation error creating request: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
     except Exception as e:
+        logger.error("Failed to create request: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create request: {str(e)}"
+            detail="Failed to create request. Please try again later."
         )
 
 
 @router.get("/{reference}", response_model=RequestTrackingResponse)
 def track_request(
     http_request: Request,
-    reference: str,
+    reference: str = Path(..., description="Request reference (REF-YYYY-NNN)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -59,17 +69,26 @@ def track_request(
     apply_rate_limit(http_request, "requests.track_request", "30/minute")
     
     try:
+        reference = sanitize_text(reference, max_length=20)
+        if not reference or not validate_reference_format(reference):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reference format. Expected format: REF-YYYY-NNN"
+            )
+
         tracking_info = tracking_service.get_request_tracking(db, reference)
         return tracking_info
     except ValueError as e:
+        logger.info("Request not found for reference: %s", reference)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
+            detail="Request not found."
         )
     except Exception as e:
+        logger.error("Failed to retrieve tracking information for %s: %s", reference, e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve tracking information: {str(e)}"
+            detail="Failed to retrieve tracking information. Please try again later."
         )
 
 
@@ -80,7 +99,7 @@ def track_request(
 )
 def update_request_status(
     http_request: Request,
-    reference: str,
+    reference: str = Path(..., description="Request reference (REF-YYYY-NNN)"),
     update_data: RequestUpdate,
     db: Session = Depends(get_db)
 ):
@@ -95,15 +114,29 @@ def update_request_status(
     apply_rate_limit(http_request, "requests.update_request_status", "100/minute")
     
     try:
+        reference = sanitize_text(reference, max_length=20)
+        if not reference or not validate_reference_format(reference):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reference format. Expected format: REF-YYYY-NNN"
+            )
+
         db_request = request_service.update_request_status(db, reference, update_data)
         return db_request
     except ValueError as e:
+        logger.info("Validation error updating request %s: %s", reference, e)
+        if "not found" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Request not found."
+            )
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        logger.error("Failed to update request %s: %s", reference, e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update request: {str(e)}"
+            detail="Failed to update request. Please try again later."
         )
