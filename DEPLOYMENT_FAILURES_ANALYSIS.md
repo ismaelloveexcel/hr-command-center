@@ -70,7 +70,7 @@ Follow these steps to configure OIDC authentication for GitHub Actions:
      --parameters '{
        "name": "GitHub-Actions-Federation",
        "issuer": "https://token.actions.githubusercontent.com",
-       "subject": "repo:ismaelloveexcel/hr-command-center:ref:refs/heads/main",
+       "subject": "repo:{GITHUB_REPOSITORY_OWNER}/{REPOSITORY_NAME}:ref:refs/heads/main",
        "audiences": ["api://AzureADTokenExchange"]
      }'
    ```
@@ -82,8 +82,8 @@ Follow these steps to configure OIDC authentication for GitHub Actions:
 
 ### Step 2: Add Secrets to GitHub Repository
 
-1. Go to GitHub repository: https://github.com/ismaelloveexcel/hr-command-center
-2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+1. Go to your GitHub repository's **Settings** page
+2. Navigate to **Secrets and variables** → **Actions**
 3. Click **New repository secret** and add each of these:
 
 | Secret Name | Value | How to Get It |

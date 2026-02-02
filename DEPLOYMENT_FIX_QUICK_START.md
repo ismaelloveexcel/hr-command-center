@@ -47,14 +47,14 @@ az ad app federated-credential create \
   --parameters '{
     "name": "GitHub-Actions-Federation",
     "issuer": "https://token.actions.githubusercontent.com",
-    "subject": "repo:ismaelloveexcel/hr-command-center:ref:refs/heads/main",
+    "subject": "repo:{GITHUB_REPOSITORY_OWNER}/{REPOSITORY_NAME}:ref:refs/heads/main",
     "audiences": ["api://AzureADTokenExchange"]
   }'
 ```
 
 ### Step 3: Add to GitHub
 
-1. Go to https://github.com/ismaelloveexcel/hr-command-center/settings/secrets/actions
+1. Go to your GitHub repository's **Settings** → **Secrets and variables** → **Actions** page
 2. Click **New repository secret**
 3. Add these three secrets:
 
@@ -72,8 +72,7 @@ Run the backend bootstrap workflow:
 gh workflow run backend-bootstrap.yml
 ```
 
-Or go to: https://github.com/ismaelloveexcel/hr-command-center/actions/workflows/backend-bootstrap.yml
-and click "Run workflow"
+Or go to your repository's **Actions** tab → **Backend Bootstrap (First Deployment)** workflow and click "Run workflow"
 
 ## Verification
 

@@ -56,16 +56,16 @@ jobs:
           fi
           
           if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
-            echo "❌ ERROR: Missing required GitHub secrets:"
+            echo "::error::❌ Missing required GitHub secrets:"
             for secret in "${MISSING_SECRETS[@]}"; do
-              echo "  - $secret"
+              echo "::error::  - $secret"
             done
-            echo ""
-            echo "These secrets are required for Azure OIDC authentication."
-            echo "Please add them to GitHub repository settings:"
-            echo "  Settings → Secrets and variables → Actions → New repository secret"
-            echo ""
-            echo "See DEPLOYMENT_FAILURES_ANALYSIS.md for detailed setup instructions."
+            echo "::error::"
+            echo "::error::These secrets are required for Azure OIDC authentication."
+            echo "::error::Please add them to GitHub repository settings:"
+            echo "::error::  Settings → Secrets and variables → Actions → New repository secret"
+            echo "::error::"
+            echo "::error::See DEPLOYMENT_FAILURES_ANALYSIS.md for detailed setup instructions."
             exit 1
           fi
           
