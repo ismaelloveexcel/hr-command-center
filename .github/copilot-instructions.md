@@ -226,7 +226,9 @@ cd frontend && npm start
 ```
 DATABASE_URL=sqlite:///./hr_portal.db
 CORS_ORIGINS=http://localhost:3000
-HR_API_KEY=your-secure-api-key
+# IMPORTANT: Generate a secure random key for production!
+# Use: python -c "import secrets; print(secrets.token_urlsafe(32))"
+HR_API_KEY=<generate-a-secure-random-key>
 DEBUG=true
 ```
 
@@ -247,7 +249,7 @@ The project uses GitHub Actions workflows for Azure deployment:
 
 **Production URLs:**
 - Backend: `https://hrportal-backend.azurewebsites.net`
-- API Docs: `https://hrportal-backend.azurewebsites.net/docs`
+- API Docs: Available only when `DEBUG=true` (disabled in production for security)
 
 ### Required GitHub Secrets
 | Secret | Description |
