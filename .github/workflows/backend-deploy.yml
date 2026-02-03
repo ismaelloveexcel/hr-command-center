@@ -11,7 +11,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: baynunah-hr-portal-rg
-  AZURE_WEBAPP_NAME: hrportal-backend
+  AZURE_WEBAPP_NAME: baynunah-hr-portal
   PYTHON_VERSION: '3.11'
 
 permissions:
