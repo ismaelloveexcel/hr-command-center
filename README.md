@@ -124,6 +124,7 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 | [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) | Pre-deployment verification | Before deploying |
 | [Deployment Runbook](./docs/DEPLOYMENT_RUNBOOK.md) | Step-by-step deployment guide | Manual deployment |
 | [Azure Setup Guide](./docs/AZURE_SETUP_GUIDE.md) | Azure resource creation | Manual setup |
+| [Change Static Web App URL](./docs/CHANGE_STATIC_WEB_APP_URL.md) | Rename/customize frontend URL | After deployment |
 | [Azure Deployment](./docs/AZURE_DEPLOYMENT.md) | Architecture & design | Understanding system |
 
 ### Quick Start

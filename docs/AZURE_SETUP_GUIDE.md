@@ -89,7 +89,10 @@ Complete guide to set up Azure subscription and configure GitHub secrets for aut
 3. Fill in:
    - **Subscription**: Your subscription
    - **Resource Group**: `hr-portal-rg`
-   - **Name**: `uae-hr-portal-web`
+   - **Name**: `uae-hr-portal` ⚠️ **IMPORTANT: Choose a meaningful name!**
+     > This name becomes part of your URL (e.g., `uae-hr-portal.{region}.azurestaticapps.net`).
+     > Avoid auto-generated names like `blue-rock-xxx` which are not professional.
+     > See [CHANGE_STATIC_WEB_APP_URL.md](./CHANGE_STATIC_WEB_APP_URL.md) if you need to rename later.
    - **Plan type**: Free
    - **Region**: Same region
    - **Source**: GitHub
