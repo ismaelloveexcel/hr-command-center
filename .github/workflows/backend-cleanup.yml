@@ -1,0 +1,152 @@
+name: Backend Cleanup (Reset Infrastructure)
+
+# DANGER: This workflow deletes Azure resources
+# Use only when you need to reset infrastructure completely
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deletion:
+        description: 'Type DELETE-BACKEND to confirm deletion'
+        required: true
+        default: ''
+      resource_group:
+        description: 'Resource group name (leave empty for default)'
+        required: false
+        default: ''
+      webapp_name:
+        description: 'Web app name (leave empty for default)'
+        required: false
+        default: ''
+
+env:
+  AZURE_RESOURCE_GROUP: baynunah-hr-portal-rg
+  AZURE_WEBAPP_NAME: baynunah-hr-portal
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_deletion }}" != "DELETE-BACKEND" ]; then
+            echo "❌ Deletion not confirmed!"
+            echo "Type 'DELETE-BACKEND' exactly to confirm deletion"
+            exit 1
+          fi
+          echo "✅ Deletion confirmed"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set resource names
+        id: set_names
+        run: |
+          RG="${{ github.event.inputs.resource_group }}"
+          WEBAPP="${{ github.event.inputs.webapp_name }}"
+          
+          if [ -z "$RG" ]; then
+            RG="${{ env.AZURE_RESOURCE_GROUP }}"
+          fi
+          
+          if [ -z "$WEBAPP" ]; then
+            WEBAPP="${{ env.AZURE_WEBAPP_NAME }}"
+          fi
+          
+          echo "resource_group=$RG" >> $GITHUB_OUTPUT
+          echo "webapp_name=$WEBAPP" >> $GITHUB_OUTPUT
+          
+          echo "Will cleanup:"
+          echo "  Resource Group: $RG"
+          echo "  Web App: $WEBAPP"
+
+      - name: Check if Web App exists
+        id: check_webapp
+        run: |
+          echo "🔍 Checking if Web App exists..."
+          
+          if az webapp show \
+               --name ${{ steps.set_names.outputs.webapp_name }} \
+               --resource-group ${{ steps.set_names.outputs.resource_group }} 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✅ Web App found"
+            
+            # Get details
+            STATE=$(az webapp show \
+                      --name ${{ steps.set_names.outputs.webapp_name }} \
+                      --resource-group ${{ steps.set_names.outputs.resource_group }} \
+                      --query "state" -o tsv)
+            echo "Current state: $STATE"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Web App not found (may already be deleted)"
+          fi
+
+      - name: Delete Web App
+        if: steps.check_webapp.outputs.exists == 'true'
+        run: |
+          echo "🗑️ Deleting Web App..."
+          
+          az webapp delete \
+            --name ${{ steps.set_names.outputs.webapp_name }} \
+            --resource-group ${{ steps.set_names.outputs.resource_group }}
+          
+          echo "✅ Deletion command completed"
+
+      - name: Wait for deletion to propagate
+        if: steps.check_webapp.outputs.exists == 'true'
+        run: |
+          echo "⏳ Waiting for deletion to propagate..."
+          echo "Azure resources may take time to fully delete"
+          sleep 60
+
+      - name: Verify cleanup
+        run: |
+          echo "🔍 Verifying cleanup..."
+          
+          if az webapp show \
+               --name ${{ steps.set_names.outputs.webapp_name }} \
+               --resource-group ${{ steps.set_names.outputs.resource_group }} 2>/dev/null; then
+            echo "⚠️ Web App still visible in Azure"
+            echo "This is normal - deletion may take a few more minutes"
+            echo "The resource is marked for deletion and name will be available soon"
+          else
+            echo "✅ Web App successfully deleted"
+          fi
+
+      - name: Cleanup summary
+        if: always()
+        run: |
+          echo ""
+          echo "=========================================="
+          echo "🧹 CLEANUP SUMMARY"
+          echo "=========================================="
+          echo ""
+          echo "Resource Group: ${{ steps.set_names.outputs.resource_group }}"
+          echo "Web App: ${{ steps.set_names.outputs.webapp_name }}"
+          echo ""
+          if [ "${{ steps.check_webapp.outputs.exists }}" == "true" ]; then
+            echo "✅ Deletion initiated"
+            echo ""
+            echo "Next steps:"
+            echo "1. Wait 2-5 minutes for deletion to complete"
+            echo "2. Run 'Backend Bootstrap' workflow to recreate infrastructure"
+            echo "3. Deploy code with 'Backend Deploy' workflow"
+          else
+            echo "ℹ️ No resources found to delete"
+            echo ""
+            echo "Next steps:"
+            echo "1. Run 'Backend Bootstrap' workflow to create infrastructure"
+          fi
+          echo ""
