@@ -134,21 +134,26 @@ jobs:
           fi
 
       - name: Create App Service Plan (if missing)
-        run: |
-          echo "🏗️ Creating App Service Plan if needed..."
-          
-          if az appservice plan show --name ${{ env.AZURE_APP_SERVICE_PLAN }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
-            echo "✅ App Service Plan already exists"
-          else
-            echo "Creating App Service Plan..."
-            az appservice plan create \
-              --name ${{ env.AZURE_APP_SERVICE_PLAN }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --location ${{ env.AZURE_LOCATION }} \
-              --sku B1 \
-              --is-linux
-            echo "✅ App Service Plan created"
-          fi
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            echo "🏗️ Creating App Service Plan if needed..."
+            
+            if az appservice plan show --name ${{ env.AZURE_APP_SERVICE_PLAN }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+              echo "✅ App Service Plan already exists"
+            else
+              echo "Creating App Service Plan..."
+              az appservice plan create \
+                --name ${{ env.AZURE_APP_SERVICE_PLAN }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --location ${{ env.AZURE_LOCATION }} \
+                --sku B1 \
+                --is-linux
+              echo "✅ App Service Plan created"
+            fi
 
       - name: Clean up broken Web App (if needed)
         if: steps.check_exists.outputs.webapp_exists_broken == 'true'
@@ -176,30 +181,52 @@ jobs:
           fi
 
       - name: Create Web App
-        run: |
-          echo "🏗️ Creating Web App..."
-          
-          # Try to create web app
-          if az webapp create \
-              --name ${{ env.AZURE_WEBAPP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --plan ${{ env.AZURE_APP_SERVICE_PLAN }} \
-              --runtime "PYTHON:${{ env.PYTHON_VERSION }}"; then
-            echo "✅ Web App created"
-          else
-            echo "❌ Failed to create Web App"
-            echo ""
-            echo "This could be because:"
-            echo "1. Web App name already in use"
-            echo "2. Previous deletion not yet complete"
-            echo "3. Insufficient permissions"
-            echo ""
-            echo "Troubleshooting:"
-            echo "• Wait a few minutes and try again"
-            echo "• Or run 'backend-cleanup.yml' workflow first"
-            echo "• Or choose a different Web App name"
-            exit 1
-          fi
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            echo "🏗️ Creating Web App..."
+            
+            # Edge case: Check if name is available
+            AVAILABILITY=$(az webapp list --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].name" -o tsv)
+            if [ -n "$AVAILABILITY" ]; then
+              echo "⚠️ Web App name already in use, checking ownership..."
+              
+              # Check if it's in our resource group
+              OUR_APP=$(az webapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                          --query "[?name=='${{ env.AZURE_WEBAPP_NAME }}'].name" -o tsv)
+              
+              if [ -z "$OUR_APP" ]; then
+                echo "❌ ERROR: Web App name taken by another resource group"
+                echo "Choose a different name or contact admin"
+                exit 1
+              fi
+            fi
+            
+            # Try to create web app
+            if az webapp create \
+                --name ${{ env.AZURE_WEBAPP_NAME }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --plan ${{ env.AZURE_APP_SERVICE_PLAN }} \
+                --runtime "PYTHON:${{ env.PYTHON_VERSION }}"; then
+              echo "✅ Web App created"
+            else
+              echo "❌ Failed to create Web App"
+              echo ""
+              echo "This could be because:"
+              echo "1. Web App name already in use"
+              echo "2. Previous deletion not yet complete"
+              echo "3. Insufficient permissions"
+              echo "4. Quota limits reached"
+              echo ""
+              echo "Troubleshooting:"
+              echo "• Wait a few minutes and try again"
+              echo "• Or run 'backend-cleanup.yml' workflow first"
+              echo "• Or choose a different Web App name"
+              exit 1
+            fi
 
       # ========================================
       # STEP 3: GENERATE AND PERSIST SECRETS
@@ -378,32 +405,25 @@ jobs:
           sleep 60
 
       - name: Health check with retries
-        run: |
-          echo "🏥 Running health check..."
-          
-          MAX_ATTEMPTS=10
-          RETRY_DELAY=15
-          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
-          
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            echo "Attempt $i/$MAX_ATTEMPTS..."
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 10
+          retry_wait_seconds: 15
+          command: |
+            echo "🏥 Running health check..."
+            
+            WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
             
             if curl -sf "$WEBAPP_URL/health" -o /tmp/health_response.json; then
               echo "✅ Health check passed"
               cat /tmp/health_response.json
-              exit 0
+            else
+              echo "❌ Health check failed"
+              echo "Checking application logs..."
+              az webapp log tail --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --only-show-errors || true
+              exit 1
             fi
-            
-            if [ $i -lt $MAX_ATTEMPTS ]; then
-              echo "Health check failed, retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
-            fi
-          done
-          
-          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
-          echo "Checking application logs..."
-          az webapp log tail --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} || true
-          exit 1
 
       # ========================================
       # STEP 7: LOCK CONFIGURATION

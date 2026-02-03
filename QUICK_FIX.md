@@ -62,7 +62,7 @@ git push origin main
 
 - **[DEPLOYMENT_FAILURE_ANALYSIS.md](./DEPLOYMENT_FAILURE_ANALYSIS.md)** - Complete technical analysis
 - **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Detailed troubleshooting guide
-- **[.github/workflows/](./github/workflows/)** - All workflow files
+- **[.github/workflows/](./.github/workflows/)** - All workflow files
 
 ---
 

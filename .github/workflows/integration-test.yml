@@ -1,0 +1,409 @@
+name: Integration Test (Simulation)
+
+# This workflow simulates a complete deployment flow
+# Use this to validate deployment readiness without affecting production
+on:
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Test environment name'
+        required: true
+        default: 'test-hr-portal'
+      skip_cleanup:
+        description: 'Skip cleanup after test (for debugging)'
+        required: false
+        default: 'false'
+
+env:
+  TEST_RESOURCE_GROUP: ${{ github.event.inputs.test_environment }}-rg
+  TEST_LOCATION: uaenorth
+  TEST_WEBAPP_NAME: ${{ github.event.inputs.test_environment }}-app
+  TEST_PLAN_NAME: ${{ github.event.inputs.test_environment }}-plan
+  PYTHON_VERSION: '3.11'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      auth_valid: ${{ steps.check_auth.outputs.valid }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate authentication secrets
+        id: check_auth
+        run: |
+          echo "🔐 Validating authentication configuration..."
+          
+          ERRORS=0
+          
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            echo "❌ AZURE_CLIENT_ID not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ AZURE_CLIENT_ID configured"
+          fi
+          
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            echo "❌ AZURE_TENANT_ID not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ AZURE_TENANT_ID configured"
+          fi
+          
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            echo "❌ AZURE_SUBSCRIPTION_ID not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ AZURE_SUBSCRIPTION_ID configured"
+          fi
+          
+          if [ $ERRORS -gt 0 ]; then
+            echo "valid=false" >> $GITHUB_OUTPUT
+            echo ""
+            echo "❌ Authentication not properly configured"
+            echo "See TROUBLESHOOTING.md for setup instructions"
+            exit 1
+          else
+            echo "valid=true" >> $GITHUB_OUTPUT
+            echo "✅ All authentication secrets configured"
+          fi
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure access
+        run: |
+          echo "🔍 Verifying Azure access..."
+          
+          # Test basic Azure CLI access
+          az account show
+          
+          # Verify subscription access
+          SUBSCRIPTION=$(az account show --query "name" -o tsv)
+          echo "✅ Connected to subscription: $SUBSCRIPTION"
+          
+          # Check if we can list resource groups
+          az group list --query "[].name" -o tsv > /dev/null
+          echo "✅ Can list resource groups"
+
+  test-infrastructure:
+    needs: validate-setup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Create test resource group
+        run: |
+          echo "🏗️ Creating test resource group..."
+          
+          if az group show --name ${{ env.TEST_RESOURCE_GROUP }} 2>/dev/null; then
+            echo "⚠️ Resource group exists, using it"
+          else
+            az group create \
+              --name ${{ env.TEST_RESOURCE_GROUP }} \
+              --location ${{ env.TEST_LOCATION }} \
+              --tags Environment=Test Purpose=IntegrationTest
+            echo "✅ Resource group created"
+          fi
+
+      - name: Create test App Service Plan (with retry)
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            echo "🏗️ Creating test App Service Plan..."
+            
+            if az appservice plan show --name ${{ env.TEST_PLAN_NAME }} \
+                 --resource-group ${{ env.TEST_RESOURCE_GROUP }} 2>/dev/null; then
+              echo "✅ App Service Plan exists"
+            else
+              az appservice plan create \
+                --name ${{ env.TEST_PLAN_NAME }} \
+                --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+                --location ${{ env.TEST_LOCATION }} \
+                --sku B1 \
+                --is-linux
+              echo "✅ App Service Plan created"
+            fi
+
+      - name: Create test Web App (with retry)
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            echo "🏗️ Creating test Web App..."
+            
+            # Check for existing app
+            if az webapp show --name ${{ env.TEST_WEBAPP_NAME }} \
+                 --resource-group ${{ env.TEST_RESOURCE_GROUP }} 2>/dev/null; then
+              
+              STATE=$(az webapp show --name ${{ env.TEST_WEBAPP_NAME }} \
+                        --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+                        --query "state" -o tsv)
+              
+              if [ "$STATE" != "Running" ]; then
+                echo "⚠️ App exists but in $STATE state, deleting..."
+                az webapp delete --name ${{ env.TEST_WEBAPP_NAME }} \
+                  --resource-group ${{ env.TEST_RESOURCE_GROUP }}
+                sleep 60
+              else
+                echo "✅ App exists and running"
+                exit 0
+              fi
+            fi
+            
+            # Create new app
+            az webapp create \
+              --name ${{ env.TEST_WEBAPP_NAME }} \
+              --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+              --plan ${{ env.TEST_PLAN_NAME }} \
+              --runtime "PYTHON:${{ env.PYTHON_VERSION }}"
+            
+            echo "✅ Web App created"
+
+      - name: Validate Web App state
+        run: |
+          echo "🔍 Validating Web App state..."
+          
+          STATE=$(az webapp show --name ${{ env.TEST_WEBAPP_NAME }} \
+                    --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+                    --query "state" -o tsv)
+          
+          echo "Current state: $STATE"
+          
+          if [ "$STATE" != "Running" ]; then
+            echo "❌ Web App not in Running state"
+            exit 1
+          fi
+          
+          echo "✅ Web App in Running state"
+
+  test-deployment:
+    needs: test-infrastructure
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify app imports
+        working-directory: backend
+        run: |
+          python -c "from main import app; print('✅ App imports successfully')"
+
+      - name: Configure test Web App
+        run: |
+          echo "⚙️ Configuring test Web App..."
+          
+          az webapp config appsettings set \
+            --name ${{ env.TEST_WEBAPP_NAME }} \
+            --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+            --settings \
+              DEBUG="False" \
+              DATABASE_URL="sqlite:///./test_hr_portal.db" \
+              TEST_MODE="true"
+          
+          az webapp config set \
+            --name ${{ env.TEST_WEBAPP_NAME }} \
+            --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+            --startup-file "startup.sh"
+
+      - name: Create deployment package
+        run: |
+          cd backend
+          zip -r ../test-deploy.zip . -x "*.pyc" -x "__pycache__/*" -x ".pytest_cache/*" -x "*.db" -x "tests/*"
+          cd ..
+          ls -lh test-deploy.zip
+
+      - name: Deploy to test Web App (with retry)
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 15
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            az webapp deployment source config-zip \
+              --resource-group ${{ env.TEST_RESOURCE_GROUP }} \
+              --name ${{ env.TEST_WEBAPP_NAME }} \
+              --src test-deploy.zip
+
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          sleep 60
+
+      - name: Health check (with retry)
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 10
+          retry_wait_seconds: 15
+          command: |
+            WEBAPP_URL="https://${{ env.TEST_WEBAPP_NAME }}.azurewebsites.net"
+            
+            echo "Testing: $WEBAPP_URL/health"
+            
+            RESPONSE=$(curl -sf "$WEBAPP_URL/health" || echo "FAILED")
+            
+            if [ "$RESPONSE" = "FAILED" ]; then
+              echo "❌ Health check failed"
+              exit 1
+            fi
+            
+            echo "Response: $RESPONSE"
+            echo "✅ Health check passed"
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies (with retry)
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 30
+          command: |
+            cd frontend
+            npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          CI: true
+          REACT_APP_API_URL: https://test.example.com
+        run: npm run build
+
+      - name: Verify build artifacts
+        working-directory: frontend
+        run: |
+          echo "🔍 Verifying build artifacts..."
+          
+          if [ ! -d "build" ]; then
+            echo "❌ Build directory not found"
+            exit 1
+          fi
+          
+          if [ ! -f "build/index.html" ]; then
+            echo "❌ index.html not found"
+            exit 1
+          fi
+          
+          echo "✅ Build artifacts verified"
+
+  cleanup:
+    needs: [test-infrastructure, test-deployment, test-frontend]
+    if: always() && github.event.inputs.skip_cleanup != 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Azure OIDC Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Delete test resource group
+        run: |
+          echo "🧹 Cleaning up test resources..."
+          
+          if az group show --name ${{ env.TEST_RESOURCE_GROUP }} 2>/dev/null; then
+            az group delete \
+              --name ${{ env.TEST_RESOURCE_GROUP }} \
+              --yes \
+              --no-wait
+            echo "✅ Cleanup initiated (running in background)"
+          else
+            echo "ℹ️ Resource group not found, nothing to clean"
+          fi
+
+  report:
+    needs: [validate-setup, test-infrastructure, test-deployment, test-frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate test report
+        run: |
+          echo "=========================================="
+          echo "🧪 INTEGRATION TEST REPORT"
+          echo "=========================================="
+          echo ""
+          echo "Test Environment: ${{ github.event.inputs.test_environment }}"
+          echo "Timestamp: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          echo ""
+          echo "Results:"
+          echo "  Authentication: ${{ needs.validate-setup.result }}"
+          echo "  Infrastructure: ${{ needs.test-infrastructure.result }}"
+          echo "  Deployment: ${{ needs.test-deployment.result }}"
+          echo "  Frontend Build: ${{ needs.test-frontend.result }}"
+          echo ""
+          
+          if [ "${{ needs.validate-setup.result }}" = "success" ] && \
+             [ "${{ needs.test-infrastructure.result }}" = "success" ] && \
+             [ "${{ needs.test-deployment.result }}" = "success" ] && \
+             [ "${{ needs.test-frontend.result }}" = "success" ]; then
+            echo "✅ ALL TESTS PASSED"
+            echo ""
+            echo "The deployment pipeline is ready for production!"
+          else
+            echo "❌ SOME TESTS FAILED"
+            echo ""
+            echo "Review the logs above for details."
+            echo "See TROUBLESHOOTING.md for common issues."
+          fi
+          echo "=========================================="

@@ -200,31 +200,24 @@ jobs:
           sleep 45
 
       - name: Health check
-        run: |
-          echo "🏥 Running health check..."
-          
-          MAX_ATTEMPTS=5
-          RETRY_DELAY=15
-          WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
-          
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            echo "Attempt $i/$MAX_ATTEMPTS..."
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 5
+          max_attempts: 5
+          retry_wait_seconds: 15
+          command: |
+            echo "🏥 Running health check..."
+            
+            WEBAPP_URL="https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
             
             if curl -sf "$WEBAPP_URL/health" -o /tmp/health_response.json; then
               echo "✅ Health check passed"
               cat /tmp/health_response.json
-              exit 0
+            else
+              echo "❌ Health check failed"
+              echo "Run 'backend-repair.yml' workflow to diagnose and fix."
+              exit 1
             fi
-            
-            if [ $i -lt $MAX_ATTEMPTS ]; then
-              echo "Health check failed, retrying in ${RETRY_DELAY}s..."
-              sleep $RETRY_DELAY
-            fi
-          done
-          
-          echo "❌ Health check failed after $MAX_ATTEMPTS attempts"
-          echo "Run 'backend-repair.yml' workflow to diagnose and fix."
-          exit 1
 
       - name: Deployment summary
         if: success()
