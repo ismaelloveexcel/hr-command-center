@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import Home from './pages/Home';
 import TrackRequest from './pages/TrackRequest';
 import HRQueue from './pages/HRQueue';
@@ -9,12 +9,13 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <nav>
+        <a href="#main-content" className="skip-link">Skip to main content</a>
+        <nav aria-label="Primary">
           <div className="nav-container">
-            <Link to="/" className="brand">UAE HR Portal</Link>
+            <NavLink to="/" className="brand" end>UAE HR Portal</NavLink>
             <ul>
-              <li><Link to="/">Home</Link></li>
-              <li><Link to="/track">Track Request</Link></li>
+              <li><NavLink to="/" end>Home</NavLink></li>
+              <li><NavLink to="/track">Track Request</NavLink></li>
             </ul>
           </div>
         </nav>

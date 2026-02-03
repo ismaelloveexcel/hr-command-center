@@ -10,12 +10,17 @@ function TrackRequest() {
 
   const handleTrack = async (e) => {
     e.preventDefault();
+    const trimmed = reference.trim();
+    if (!trimmed) {
+      setError('Enter a valid reference number.');
+      return;
+    }
     setLoading(true);
     setError(null);
     setTracking(null);
 
     try {
-      const response = await fetch(`${config.apiUrl}/requests/${reference}`);
+      const response = await fetch(`${config.apiUrl}/requests/${trimmed}`);
       
       if (!response.ok) {
         throw new Error('Request not found. Please check your reference number.');
@@ -52,8 +57,10 @@ function TrackRequest() {
     return icons[status] || '●';
   };
 
+  const errorId = error ? 'reference-error' : undefined;
+
   return (
-    <main className="track-request">
+    <main className="track-request" id="main-content">
       <div className="track-header">
         <h1>Track My Request</h1>
         <p className="subtitle">Enter your reference number to check the status of your request</p>
@@ -69,9 +76,11 @@ function TrackRequest() {
             placeholder=" "
             className="reference-input"
             required
+            aria-describedby={error ? 'reference-hint reference-error' : 'reference-hint'}
+            aria-invalid={Boolean(error)}
           />
           <label htmlFor="reference" className="floating-label">Reference Number</label>
-          <span className="input-hint">e.g., REF-2026-001</span>
+          <span className="input-hint" id="reference-hint">e.g., REF-2026-001</span>
         </div>
         <button type="submit" disabled={loading} className="track-button">
           {loading ? (
@@ -94,7 +103,7 @@ function TrackRequest() {
       </div>
 
       {error && (
-        <div className="error-message" role="alert" aria-live="polite">
+        <div className="error-message" role="alert" aria-live="polite" id={errorId}>
           <span className="error-icon">!</span>
           <p>{error}</p>
         </div>
@@ -125,7 +134,7 @@ function TrackRequest() {
 
           <div className={`status-card status-${tracking.current_status}`}>
             <div className="status-content">
-              <span className={`status-icon-large ${tracking.current_status}`}>
+              <span className={`status-icon-large ${tracking.current_status}`} aria-hidden="true">
                 {getStatusIcon(tracking.current_status)}
               </span>
               <div>
@@ -155,7 +164,7 @@ function TrackRequest() {
                   className={`timeline-event ${index === tracking.timeline.length - 1 ? 'latest' : ''}`}
                 >
                   <div className={`timeline-dot ${event.status}`}>
-                    <span>{getStatusIcon(event.status)}</span>
+                    <span aria-hidden="true">{getStatusIcon(event.status)}</span>
                   </div>
                   <div className="timeline-content">
                     <div className="timeline-date">{formatDate(event.timestamp)}</div>

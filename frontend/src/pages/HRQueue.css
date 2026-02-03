@@ -13,7 +13,7 @@
   font-size: 1.75rem;
 }
 
-.subtitle {
+.hr-queue .subtitle {
   color: #718096;
   margin: 0;
   font-size: 1rem;
@@ -294,7 +294,7 @@
 .request-card.status-completed .card-accent { background: linear-gradient(180deg, #059669, #047857); }
 .request-card.status-rejected .card-accent { background: linear-gradient(180deg, #dc2626, #b91c1c); }
 
-.request-header {
+.hr-queue .request-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -387,6 +387,26 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.apply-status-btn {
+  padding: 8px 14px;
+  background: #1a365d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.apply-status-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.apply-status-btn:hover:not(:disabled) {
+  background: #163055;
 }
 
 .status-select:focus {

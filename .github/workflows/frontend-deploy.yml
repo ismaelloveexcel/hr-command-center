@@ -47,7 +47,7 @@ jobs:
         working-directory: frontend
         env:
           REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
-          CI: false
+          CI: true
         run: npm run build
 
       - name: Deploy to Azure Static Web Apps

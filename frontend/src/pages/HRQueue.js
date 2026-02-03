@@ -7,6 +7,7 @@ function HRQueue() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [updatingRef, setUpdatingRef] = useState(null);
+  const [pendingStatuses, setPendingStatuses] = useState({});
   const [hrApiKey, setHrApiKey] = useState(() => sessionStorage.getItem('hrApiKey') || '');
   const [pendingKey, setPendingKey] = useState('');
   const [hasKey, setHasKey] = useState(() => Boolean(sessionStorage.getItem('hrApiKey')));
@@ -49,6 +50,7 @@ function HRQueue() {
 
       const data = await response.json();
       setRequests(data);
+      setPendingStatuses({});
     } catch (err) {
       if (err.message.startsWith('Unauthorized')) {
         invalidateKey();
@@ -192,7 +194,7 @@ function HRQueue() {
   );
 
   return (
-    <main className="hr-queue">
+    <main className="hr-queue" id="main-content">
       <div className="page-header">
         <h1>HR Dashboard (staff only)</h1>
         <p className="subtitle">Manage and update employee request statuses securely</p>
@@ -257,8 +259,10 @@ function HRQueue() {
             renderEmptyState()
           ) : (
             <div className="requests-list">
-              {requests.map((request) => (
-                <div key={request.id} className={`request-card status-${request.status}`}>
+              {requests.map((request) => {
+                const pendingStatus = pendingStatuses[request.reference] ?? request.status;
+                return (
+                  <div key={request.id} className={`request-card status-${request.status}`}>
                   <div className="card-accent"></div>
                   <div className="request-header">
                     <div className="request-title-section">
@@ -271,7 +275,7 @@ function HRQueue() {
                     </div>
                     <div className="status-control">
                       <div className={`status-indicator ${request.status}`}>
-                        <span className="status-dot">{getStatusIcon(request.status)}</span>
+                        <span className="status-dot" aria-hidden="true">{getStatusIcon(request.status)}</span>
                       </div>
                       <div className="status-text">
                         Status: {request.status_label || request.status}
@@ -281,10 +285,13 @@ function HRQueue() {
                       </label>
                       <select
                         id={`status-${request.reference}`}
-                        value={request.status}
-                        onChange={(e) => handleStatusChange(request.reference, e.target.value)}
+                        value={pendingStatus}
+                        onChange={(e) => setPendingStatuses((prev) => ({
+                          ...prev,
+                          [request.reference]: e.target.value
+                        }))}
                         disabled={updatingRef === request.reference}
-                        className={`status-select ${request.status}`}
+                        className={`status-select ${pendingStatus}`}
                       >
                         <option value="submitted">Submitted</option>
                         <option value="reviewing">Reviewing</option>
@@ -292,8 +299,16 @@ function HRQueue() {
                         <option value="completed">Completed</option>
                         <option value="rejected">Rejected</option>
                       </select>
+                      <button
+                        type="button"
+                        className="apply-status-btn"
+                        onClick={() => handleStatusChange(request.reference, pendingStatus)}
+                        disabled={updatingRef === request.reference || pendingStatus === request.status}
+                      >
+                        Apply
+                      </button>
                       {updatingRef === request.reference && (
-                        <span className="updating-spinner"></span>
+                        <span className="updating-spinner" aria-hidden="true"></span>
                       )}
                     </div>
                   </div>
@@ -321,8 +336,9 @@ function HRQueue() {
                       <p>{request.internal_notes}</p>
                     </div>
                   )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </>

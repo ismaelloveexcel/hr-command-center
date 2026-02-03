@@ -69,6 +69,31 @@ jobs:
           
           echo "✅ Backend exists"
 
+      - name: Validate backend settings
+        run: |
+          echo "🔍 Validating backend app settings..."
+          
+          DEBUG_FLAG=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='DEBUG'].value" -o tsv)
+          
+          DATABASE_URL=$(az webapp config appsettings list \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?name=='DATABASE_URL'].value" -o tsv)
+          
+          if [ "$DEBUG_FLAG" = "True" ]; then
+            echo "❌ ERROR: DEBUG must be False in production."
+            exit 1
+          fi
+          
+          if echo "$DATABASE_URL" | grep -qi "sqlite"; then
+            echo "⚠️ WARNING: DATABASE_URL is SQLite. Consider PostgreSQL for production."
+          fi
+          
+          echo "✅ Backend settings validated"
+
       - name: Validate secrets exist
         run: |
           echo "🔍 Validating required secrets..."
@@ -122,7 +147,7 @@ jobs:
           ls -lh deploy.zip
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+        uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: deploy.zip

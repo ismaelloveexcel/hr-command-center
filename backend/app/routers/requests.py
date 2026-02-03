@@ -70,6 +70,7 @@ def track_request(
     
     try:
         reference = sanitize_text(reference, max_length=20)
+        reference = reference.upper() if reference else reference
         if not reference or not validate_reference_format(reference):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -115,6 +116,7 @@ def update_request_status(
     
     try:
         reference = sanitize_text(reference, max_length=20)
+        reference = reference.upper() if reference else reference
         if not reference or not validate_reference_format(reference):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

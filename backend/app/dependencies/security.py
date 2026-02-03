@@ -34,7 +34,8 @@ def require_hr_api_key(x_hr_api_key: str | None = Header(None, alias="X-HR-API-K
             detail="HR API key is not configured on the server."
         )
 
-    if not x_hr_api_key or not _constant_time_compare(x_hr_api_key, expected_key):
+    provided_key = x_hr_api_key.strip() if x_hr_api_key else None
+    if not provided_key or not _constant_time_compare(provided_key, expected_key):
         logger.warning("Invalid HR API key attempt.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 function Home() {
   return (
-    <main className="home-page">
+    <main className="home-page" id="main-content">
       <h1>UAE HR Portal</h1>
       <p className="home-subtitle">
         Track your existing HR requests and stay updated on progress.
@@ -12,7 +12,7 @@ function Home() {
       <div className="home-actions">
         <Link to="/track" className="action-card">
           <h2>
-            <span role="img" aria-label="search">🔍</span>
+            <span role="img" aria-hidden="true">🔍</span>
             Track My Request
           </h2>
           <p>Check the status of your submitted request using your reference number (e.g., REF-2026-001)</p>
