@@ -50,7 +50,7 @@ Delete the current Static Web App and create a new one with a meaningful name.
 
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Search for **Static Web Apps**
-3. Find and select your app (`blue-rock-0fc588010.4`)
+3. Find and select your app (e.g., `blue-rock-0fc588010`)
 4. Click **Delete** in the top toolbar
 5. Type the app name to confirm deletion
 
@@ -61,7 +61,7 @@ Delete the current Static Web App and create a new one with a meaningful name.
 3. Fill in:
    - **Subscription**: Your subscription
    - **Resource Group**: `hr-portal-rg`
-   - **Name**: `uae-hr-portal` (⚠️ This must be **globally unique** across all Azure Static Web Apps and becomes part of your URL!)
+   - **Name**: `uae-hr-portal-web` (⚠️ This must be **globally unique** across all Azure Static Web Apps and becomes part of your URL!)
    - **Plan type**: Free
    - **Region**: Choose your preferred region
    - **Source**: GitHub
@@ -94,7 +94,7 @@ Update the CORS settings in your Azure App Service:
 2. Navigate to **Configuration** → **Application settings**
 3. Update `CORS_ORIGINS` with your new Static Web App URL:
    ```
-   https://uae-hr-portal.{region}.azurestaticapps.net
+   https://uae-hr-portal-web.{region}.azurestaticapps.net
    ```
    (Replace `{region}` with your actual region, e.g., `4`, `eastus2`, etc.)
 4. Click **Save**
@@ -106,7 +106,7 @@ Update the CORS settings in your Azure App Service:
 # OR push a small change to main
 ```
 
-**Result:** Your app is accessible at `https://uae-hr-portal.{region}.azurestaticapps.net`
+**Result:** Your app is accessible at `https://uae-hr-portal-web.{region}.azurestaticapps.net`
 
 ---
 
@@ -123,7 +123,7 @@ az login
 # Set variables
 RESOURCE_GROUP="hr-portal-rg"
 OLD_APP_NAME="blue-rock-0fc588010"
-NEW_APP_NAME="uae-hr-portal"
+NEW_APP_NAME="uae-hr-portal-web"
 LOCATION="eastus"
 
 # Delete old Static Web App
@@ -155,7 +155,7 @@ az staticwebapp secrets list \
 ## Recommended Names for HR Portal
 
 When recreating, consider professional names like:
-- `uae-hr-portal`
+- `uae-hr-portal-web`
 - `hr-command-center`
 - `hr-portal-app`
 - `employee-portal`
@@ -174,7 +174,7 @@ When recreating, consider professional names like:
 | Option | Effort | Cost | Result |
 |--------|--------|------|--------|
 | Add Custom Domain | Medium | Domain cost (~$10-15/year) | Professional URL like `hr.company.com` |
-| Recreate with New Name | Low | Free | Better URL like `uae-hr-portal.azurestaticapps.net` |
+| Recreate with New Name | Low | Free | Better URL like `uae-hr-portal-web.azurestaticapps.net` |
 | Azure CLI | Medium | Free | Automated recreation |
 
 **Recommendation:** If you have a company domain, use **Option 1**. Otherwise, use **Option 2** to get a meaningful Azure URL.
