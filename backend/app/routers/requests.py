@@ -100,8 +100,8 @@ def track_request(
 )
 def update_request_status(
     http_request: Request,
-    reference: str = Path(..., description="Request reference (REF-YYYY-NNN)"),
     update_data: RequestUpdate,
+    reference: str = Path(..., description="Request reference (REF-YYYY-NNN)"),
     db: Session = Depends(get_db)
 ):
     """
