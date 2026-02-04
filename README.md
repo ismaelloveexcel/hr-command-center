@@ -64,9 +64,20 @@ Frontend: http://localhost:3000
 | GET | `/hr/requests` | HR request queue (requires HR API key) |
 | GET | `/hr/stats` | Request statistics (requires HR API key) |
 
-## Deployment
+## 🚀 Deployment
 
-The project includes autonomous Azure deployment with self-healing capabilities:
+> **NEW!** [**Simple Deployment Guide for Non-Technical Users**](./SIMPLE_DEPLOYMENT_GUIDE.md) ⭐  
+> Deploy in 15 minutes with just a few clicks - no coding required!
+
+### Quick Deployment Options
+
+**For Non-Technical Users**: 
+- 📖 **[Start Here: Simple Deployment Guide](./SIMPLE_DEPLOYMENT_GUIDE.md)** - Step-by-step guide with screenshots
+  - Option 1: Click-button deployment (easiest!)
+  - Option 2: AI agent deployment (fully automated!)
+
+**For Technical Users**:
+- The project includes autonomous Azure deployment with self-healing capabilities:
 
 ### ⚡ Autonomous Backend Deployment (New!)
 
@@ -117,6 +128,7 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
+| [**Simple Deployment Guide**](./SIMPLE_DEPLOYMENT_GUIDE.md) | **For non-technical users** - Click-button deployment | First deployment ⭐⭐⭐ |
 | [Azure Backend Workflows](./docs/AZURE_BACKEND_WORKFLOWS.md) | **Autonomous workflows** - New deployment system | Production deployments ⭐ |
 | [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) | Common commands & troubleshooting | Daily operations ⭐ |
 | [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Legacy method |
