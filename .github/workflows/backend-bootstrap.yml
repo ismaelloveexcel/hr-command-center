@@ -25,6 +25,41 @@ jobs:
       # ========================================
       # STEP 1: PREFLIGHT VALIDATION
       # ========================================
+      - name: Validate Azure OIDC secrets
+        run: |
+          echo "🔍 Validating Azure OIDC authentication secrets..."
+          
+          MISSING_SECRETS=()
+          
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_CLIENT_ID")
+          fi
+          
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_TENANT_ID")
+          fi
+          
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_SUBSCRIPTION_ID")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "::error::❌ Missing required GitHub secrets:"
+            for secret in "${MISSING_SECRETS[@]}"; do
+              echo "::error::  - $secret"
+            done
+            echo "::error::"
+            echo "::error::These secrets are required for Azure OIDC authentication."
+            echo "::error::Please add them to GitHub repository settings:"
+            echo "::error::  Settings → Secrets and variables → Actions → New repository secret"
+            echo "::error::"
+            echo "::error::See DEPLOYMENT_FAILURES_ANALYSIS.md for detailed setup instructions."
+            echo "::error::Setup guide: https://learn.microsoft.com/azure/developer/github/connect-from-azure"
+            exit 1
+          fi
+          
+          echo "✅ All required Azure OIDC secrets are configured"
+      
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -49,32 +84,6 @@ jobs:
           fi
           
           echo "✅ All required files exist"
-
-      - name: Validate required GitHub secrets exist
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          echo "🔍 Validating GitHub secrets..."
-          
-          if [ -z "$AZURE_CLIENT_ID" ]; then
-            echo "❌ ERROR: AZURE_CLIENT_ID secret is missing"
-            echo "Configure OIDC authentication: https://learn.microsoft.com/azure/developer/github/connect-from-azure"
-            exit 1
-          fi
-          
-          if [ -z "$AZURE_TENANT_ID" ]; then
-            echo "❌ ERROR: AZURE_TENANT_ID secret is missing"
-            exit 1
-          fi
-          
-          if [ -z "$AZURE_SUBSCRIPTION_ID" ]; then
-            echo "❌ ERROR: AZURE_SUBSCRIPTION_ID secret is missing"
-            exit 1
-          fi
-          
-          echo "✅ All required secrets configured"
 
       - name: Azure OIDC Login
         uses: azure/login@v1

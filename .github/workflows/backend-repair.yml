@@ -37,6 +37,40 @@ jobs:
       needs_secret_sync: ${{ steps.detect_state.outputs.needs_secret_sync }}
     
     steps:
+      - name: Validate Azure OIDC secrets
+        run: |
+          echo "🔍 Validating Azure OIDC authentication secrets..."
+          
+          MISSING_SECRETS=()
+          
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_CLIENT_ID")
+          fi
+          
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_TENANT_ID")
+          fi
+          
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_SUBSCRIPTION_ID")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "::error::❌ Missing required GitHub secrets:"
+            for secret in "${MISSING_SECRETS[@]}"; do
+              echo "::error::  - $secret"
+            done
+            echo "::error::"
+            echo "::error::These secrets are required for Azure OIDC authentication."
+            echo "::error::Please add them to GitHub repository settings:"
+            echo "::error::  Settings → Secrets and variables → Actions → New repository secret"
+            echo "::error::"
+            echo "::error::See DEPLOYMENT_FAILURES_ANALYSIS.md for detailed setup instructions."
+            exit 1
+          fi
+          
+          echo "✅ All required Azure OIDC secrets are configured"
+      
       - name: Checkout code
         uses: actions/checkout@v4
 
