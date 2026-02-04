@@ -68,13 +68,17 @@ Frontend: http://localhost:3000
 
 > **NEW!** [**Simple Deployment Guide for Non-Technical Users**](./SIMPLE_DEPLOYMENT_GUIDE.md) ⭐  
 > Deploy in 15 minutes with just a few clicks - no coding required!
+>
+> **📑 Complete Documentation**: [Deployment Index](./DEPLOYMENT_INDEX.md) - Find all deployment guides in one place
 
 ### Quick Deployment Options
 
 **For Non-Technical Users**: 
-- 📖 **[Start Here: Simple Deployment Guide](./SIMPLE_DEPLOYMENT_GUIDE.md)** - Step-by-step guide with screenshots
+- 📖 **[Simple Deployment Guide](./SIMPLE_DEPLOYMENT_GUIDE.md)** - Complete step-by-step guide
   - Option 1: Click-button deployment (easiest!)
   - Option 2: AI agent deployment (fully automated!)
+- 🤖 **[How to Use AI Agents](./HOW_TO_USE_AGENTS.md)** - Detailed AI agent guide
+- 📋 **[Quick Reference Card](./QUICK_REFERENCE_DEPLOYMENT.md)** - One-page cheat sheet
 
 **For Technical Users**:
 - The project includes autonomous Azure deployment with self-healing capabilities:
@@ -126,9 +130,14 @@ Creates Azure resources, configures secrets, and triggers deployment automatical
 
 ### 📚 Deployment Documentation
 
+> **📑 [Complete Index](./DEPLOYMENT_INDEX.md)** - Browse all documentation organized by role and task
+
 | Document | Purpose | When to Use |
 |----------|---------|-------------|
+| [**Deployment Index**](./DEPLOYMENT_INDEX.md) | **Navigation hub** - Find the right guide for you | Start here! ⭐⭐⭐ |
 | [**Simple Deployment Guide**](./SIMPLE_DEPLOYMENT_GUIDE.md) | **For non-technical users** - Click-button deployment | First deployment ⭐⭐⭐ |
+| [**How to Use AI Agents**](./HOW_TO_USE_AGENTS.md) | **AI-powered deployment** - Using AZURE_DEPLOY_AUTOPILOT | Fastest method ⭐⭐⭐ |
+| [**Quick Reference Card**](./QUICK_REFERENCE_DEPLOYMENT.md) | **One-page cheat sheet** - Essential info at a glance | Quick lookup ⭐⭐ |
 | [Azure Backend Workflows](./docs/AZURE_BACKEND_WORKFLOWS.md) | **Autonomous workflows** - New deployment system | Production deployments ⭐ |
 | [Quick Reference](./docs/AZURE_BACKEND_QUICK_REFERENCE.md) | Common commands & troubleshooting | Daily operations ⭐ |
 | [Deployment Automation](./docs/DEPLOYMENT_AUTOMATION.md) | **Automated setup** - One-command deployment | Legacy method |
